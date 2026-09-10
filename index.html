@@ -11,6 +11,13 @@
       document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');
     }
   </script>
+  <!-- MQTT.js for Failproof Encrypted Cloud Co-Op (bypasses all NAT / firewalls) -->
+  <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+  <script>
+    if (typeof mqtt === 'undefined') {
+      document.write('<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"><\/script>');
+    }
+  </script>
   <style>
     * {
       box-sizing: border-box;
@@ -598,7 +605,7 @@
   <!-- Top Header Bar -->
   <div class="top-header">
     <div class="lobby-badge">
-      <span class="version-tag" title="Build Version">v1.0.5-COOP</span>
+      <span class="version-tag" title="Build Version">v1.1.0-COOP</span>
       <button class="btn-lobby-trigger" onclick="openLanModal()">
         <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
       </button>
@@ -632,7 +639,7 @@
       Captures all network events, WebRTC state, connection handshakes, and uncaught errors.
     </div>
     <div id="debug-log-view" class="debug-log-view">
-      [System] Diagnostic log initialized (v1.0.5-COOP)
+      [System] Diagnostic log initialized (v1.1.0-COOP)
     </div>
     <div style="display: flex; gap: 10px; justify-content: flex-end;">
       <button onclick="clearDebugLog()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Clear Log</button>
@@ -654,12 +661,45 @@
 
     <!-- Mode Selector Tabs -->
     <div class="lan-tabs">
-      <button id="lan-tab-p2p" class="lan-tab-btn active" onclick="switchLanTab('p2p')">⚡ Direct Browser P2P (Code)</button>
+      <button id="lan-tab-cloud" class="lan-tab-btn active" onclick="switchLanTab('cloud')">☁️ Cloud Co-Op (Recommended / Any Network)</button>
+      <button id="lan-tab-p2p" class="lan-tab-btn" onclick="switchLanTab('p2p')">⚡ Direct Browser P2P (WebRTC)</button>
       <button id="lan-tab-ws" class="lan-tab-btn" onclick="switchLanTab('ws')">🖥️ Dedicated LAN Node Server</button>
     </div>
 
-    <!-- TAB 1: Browser P2P (PeerJS / WebRTC) -->
-    <div id="tab-content-p2p">
+    <!-- TAB 1: Cloud Co-Op (Encrypted WebSocket Relay) -->
+    <div id="tab-content-cloud">
+      <div style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(99, 102, 241, 0.08)); border: 1px solid #38bdf8; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 11.5px; color: #bae6fd; display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 20px;">🛡️</span>
+        <div>
+          <strong>Failproof Cloud Matchmaking:</strong> Connects over encrypted WebSockets. Works across campus Wi-Fi, dorms, home routers, cell hotspots, and restrictive firewalls with zero setup!
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <!-- Host Section -->
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
+          <h3 style="font-size: 14px; color: #38bdf8; margin-bottom: 6px;">1. Host Cloud Game</h3>
+          <p style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">Create a cloud room code to give your friend anywhere on the internet.</p>
+          <div id="cloud-host-code-box" style="display: none;">
+            <label style="font-size: 10.5px; color: #cbd5e1; font-weight: 600;">Share Room Code with Partner:</label>
+            <div id="display-cloud-room-code" class="room-code-display" onclick="copyCloudRoomCode()" title="Click to copy">----</div>
+            <div style="font-size: 10px; color: #10b981; text-align: center; margin-bottom: 8px;">📋 Click code above to copy!</div>
+          </div>
+          <button id="btn-host-cloud" class="lan-action-btn" style="background: linear-gradient(135deg, #0284c7, #38bdf8);" onclick="startHostCloud()">Host Cloud Co-Op</button>
+        </div>
+
+        <!-- Join Section -->
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
+          <h3 style="font-size: 14px; color: #ec4899; margin-bottom: 6px;">2. Join Cloud Game</h3>
+          <p style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">Enter the code from the host player:</p>
+          <label style="font-size: 10.5px; color: #cbd5e1; font-weight: 600;">Enter Room Code:</label>
+          <input id="input-join-cloud-code" class="lan-input" type="text" placeholder="e.g. btd-abc12" maxlength="12" style="text-transform: lowercase;" />
+          <button id="btn-join-cloud" class="lan-action-btn" style="background: linear-gradient(135deg, #db2777, #ec4899);" onclick="joinCloud()">Connect & Join</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Browser P2P (PeerJS / WebRTC) -->
+    <div id="tab-content-p2p" style="display: none;">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
         <!-- Host Section -->
         <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
@@ -684,7 +724,7 @@
       </div>
     </div>
 
-    <!-- TAB 2: Dedicated LAN Node Server (server.js) -->
+    <!-- TAB 3: Dedicated LAN Node Server (server.js) -->
     <div id="tab-content-ws" style="display: none;">
       <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
         <h3 style="font-size: 14px; color: #10b981; margin-bottom: 6px;">Zero-Dependency Node.js Server Mode</h3>
@@ -3102,9 +3142,10 @@
       showToast('Debug log cleared.');
     }
     function copyDebugLog() {
-      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.0.5-COOP) ===\n`;
+      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.1.0-COOP) ===\n`;
       report += `Time: ${new Date().toISOString()}\n`;
       report += `User Agent: ${navigator.userAgent}\n`;
+      report += `MQTT Library Available: ${typeof mqtt !== 'undefined'}\n`;
       report += `PeerJS Available: ${typeof Peer !== 'undefined'}\n`;
       report += `Current NetMode: ${netMode} | Role: ${myRole} | Connected: ${peerConnected}\n`;
       report += `Active Room Code: ${activeRoomCode || 'None'}\n\n`;
@@ -3121,7 +3162,7 @@
     }
 
     // =========================================================================
-    // LAN & ONLINE MULTIPLAYER CONTROLLER (PeerJS WebRTC + WebSocket LAN Server)
+    // LAN & ONLINE MULTIPLAYER CONTROLLER (Cloud MQTT + WebRTC + WebSocket LAN)
     // =========================================================================
     function showToast(msg, isErr = false) {
       const toast = document.getElementById('status-toast');
@@ -3140,10 +3181,28 @@
       document.getElementById('lan-modal').style.display = 'none';
     }
     function switchLanTab(tab) {
-      document.getElementById('lan-tab-p2p').classList.toggle('active', tab === 'p2p');
-      document.getElementById('lan-tab-ws').classList.toggle('active', tab === 'ws');
-      document.getElementById('tab-content-p2p').style.display = tab === 'p2p' ? 'block' : 'none';
-      document.getElementById('tab-content-ws').style.display = tab === 'ws' ? 'block' : 'none';
+      const tabCloud = document.getElementById('lan-tab-cloud');
+      const tabP2p = document.getElementById('lan-tab-p2p');
+      const tabWs = document.getElementById('lan-tab-ws');
+      const contentCloud = document.getElementById('tab-content-cloud');
+      const contentP2p = document.getElementById('tab-content-p2p');
+      const contentWs = document.getElementById('tab-content-ws');
+
+      if (tabCloud) tabCloud.classList.toggle('active', tab === 'cloud');
+      if (tabP2p) tabP2p.classList.toggle('active', tab === 'p2p');
+      if (tabWs) tabWs.classList.toggle('active', tab === 'ws');
+      if (contentCloud) contentCloud.style.display = tab === 'cloud' ? 'block' : 'none';
+      if (contentP2p) contentP2p.style.display = tab === 'p2p' ? 'block' : 'none';
+      if (contentWs) contentWs.style.display = tab === 'ws' ? 'block' : 'none';
+    }
+
+    function copyCloudRoomCode() {
+      if (!activeRoomCode) return;
+      navigator.clipboard.writeText(activeRoomCode).then(() => {
+        showToast(`📋 Cloud Code ${activeRoomCode} copied!`);
+      }).catch(() => {
+        showToast(`Cloud Code: ${activeRoomCode}`);
+      });
     }
 
     function copyRoomCode() {
@@ -3194,6 +3253,186 @@
       }
     }
 
+    // =========================================================================
+    // 1. FAILPROOF ENCRYPTED CLOUD CO-OP (MQTT over Secure WebSocket - EMQX)
+    // =========================================================================
+    let mqttClient = null;
+
+    function startHostCloud() {
+      if (typeof mqtt === 'undefined') {
+        showToast('Cloud networking library not loaded. Check internet connection!', true);
+        logNet('❌ Error: MQTT library is undefined.');
+        return;
+      }
+
+      disconnectCoop(true);
+
+      const desiredId = 'btd-' + Math.random().toString(36).substring(2, 7);
+      activeRoomCode = desiredId;
+      netMode = 'cloud_host';
+      myRole = 'host';
+      myPlayerName = 'Host (P1)';
+
+      document.getElementById('display-cloud-room-code').textContent = desiredId;
+      document.getElementById('cloud-host-code-box').style.display = 'block';
+      document.getElementById('btn-host-cloud').disabled = true;
+      document.getElementById('btn-host-cloud').textContent = 'Cloud Hosting Active';
+      updateNetworkStatusUI();
+
+      const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+      logNet(`[Cloud] Connecting to encrypted WebSocket relay (${brokerUrl})...`);
+      showToast('Hosting Cloud Session...');
+
+      const clientId = 'btd_h_' + Math.random().toString(16).substring(2, 10);
+      try {
+        mqttClient = mqtt.connect(brokerUrl, {
+          clientId: clientId,
+          clean: true,
+          connectTimeout: 8000,
+          reconnectPeriod: 2500
+        });
+      } catch (e) {
+        logNet(`❌ Cloud connect failed: ${e.message}`);
+        showToast('Cloud connect error: ' + e.message, true);
+        return;
+      }
+
+      const inTopic = `btdcoop_v1/${activeRoomCode}/to_host`;
+      const outTopic = `btdcoop_v1/${activeRoomCode}/to_client`;
+
+      mqttClient.on('connect', () => {
+        logNet(`[Cloud] Connected to secure relay! Subscribing to room channel...`);
+        mqttClient.subscribe(inTopic, (err) => {
+          if (err) {
+            logNet(`❌ Cloud room subscribe failed: ${err.message}`);
+          } else {
+            logNet(`✅ Cloud Room ready! Share code: "${activeRoomCode}"`);
+            showToast(`🚀 Cloud Room hosted! Code: ${activeRoomCode}`);
+          }
+        });
+      });
+
+      mqttClient.on('message', (topic, payload) => {
+        try {
+          const msg = JSON.parse(payload.toString());
+          if (msg.type === 'JOIN_HELLO') {
+            peerConnected = true;
+            peerName = msg.senderName || 'Partner (P2)';
+            updateNetworkStatusUI();
+            logNet(`🎉 Partner joined Cloud Room: ${peerName}!`);
+            showToast(`🎉 Co-Op Connected! Playing with ${peerName}!`);
+
+            // Send full game state snapshot immediately
+            sendNetMessage({
+              type: 'STATE_SNAPSHOT',
+              cash,
+              lives,
+              currentRound,
+              isWaveActive,
+              towers: towers.map(t => ({
+                id: t.id, typeKey: t.typeKey, x: t.x, y: t.y, owner: t.owner,
+                totalCost: t.totalCost, p1Tier: t.p1Tier, p2Tier: t.p2Tier, p3Tier: t.p3Tier,
+                targetPriority: t.targetPriority
+              }))
+            });
+          } else {
+            handleIncomingNetMessage(msg);
+          }
+        } catch (e) {
+          logNet(`[Cloud] Message parse error: ${e.message}`);
+        }
+      });
+
+      mqttClient.on('error', (err) => {
+        logNet(`❌ Cloud relay error: ${err.message || err}`);
+      });
+      mqttClient.on('offline', () => {
+        logNet(`⚠️ Cloud relay temporarily offline. Reconnecting...`);
+      });
+    }
+
+    function joinCloud() {
+      if (typeof mqtt === 'undefined') {
+        showToast('Cloud networking library not loaded. Check internet connection!', true);
+        logNet('❌ Error: MQTT library is undefined.');
+        return;
+      }
+
+      const codeInput = document.getElementById('input-join-cloud-code');
+      const targetCode = codeInput.value.trim().toLowerCase();
+      if (!targetCode) {
+        showToast('Please enter a valid room code!', true);
+        return;
+      }
+
+      disconnectCoop(true);
+
+      activeRoomCode = targetCode;
+      netMode = 'cloud_client';
+      myRole = 'client';
+      myPlayerName = 'Partner (P2)';
+      updateNetworkStatusUI();
+
+      const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+      logNet(`[Cloud] Connecting to encrypted WebSocket relay for room "${targetCode}"...`);
+      showToast(`Joining room ${targetCode}...`);
+
+      const clientId = 'btd_c_' + Math.random().toString(16).substring(2, 10);
+      try {
+        mqttClient = mqtt.connect(brokerUrl, {
+          clientId: clientId,
+          clean: true,
+          connectTimeout: 8000,
+          reconnectPeriod: 2500
+        });
+      } catch (e) {
+        logNet(`❌ Cloud connect failed: ${e.message}`);
+        showToast('Cloud connect error: ' + e.message, true);
+        return;
+      }
+
+      const inTopic = `btdcoop_v1/${activeRoomCode}/to_client`;
+      const outTopic = `btdcoop_v1/${activeRoomCode}/to_host`;
+
+      mqttClient.on('connect', () => {
+        logNet(`[Cloud] Connected to secure relay! Subscribing to room channel...`);
+        mqttClient.subscribe(inTopic, (err) => {
+          if (err) {
+            logNet(`❌ Cloud subscribe error: ${err.message}`);
+          } else {
+            logNet(`[Cloud] Subscribed. Sending handshake to host...`);
+            mqttClient.publish(outTopic, JSON.stringify({
+              type: 'JOIN_HELLO',
+              senderName: 'Partner (P2)'
+            }));
+          }
+        });
+      });
+
+      mqttClient.on('message', (topic, payload) => {
+        try {
+          const msg = JSON.parse(payload.toString());
+          if (msg.type === 'STATE_SNAPSHOT') {
+            peerConnected = true;
+            peerName = 'Host (P1)';
+            updateNetworkStatusUI();
+            logNet(`🎉 Connected to Host via Cloud Relay!`);
+            showToast(`🎉 Co-Op Connected! Playing with Host (P1)!`);
+          }
+          handleIncomingNetMessage(msg);
+        } catch (e) {
+          logNet(`[Cloud] Message parse error: ${e.message}`);
+        }
+      });
+
+      mqttClient.on('error', (err) => {
+        logNet(`❌ Cloud relay error: ${err.message || err}`);
+      });
+    }
+
+    // =========================================================================
+    // 2. DIRECT BROWSER P2P (PeerJS WebRTC with STUN + TURN Relay)
+    // =========================================================================
     // Comprehensive STUN and TURN server pool for NAT traversal & symmetric NAT relay
     const ICE_CONFIG = {
       iceServers: [
@@ -3487,7 +3726,12 @@
 
     // Unified message transmitter
     function sendNetMessage(msg) {
-      if (peerConnection && peerConnection.open) {
+      if (mqttClient && mqttClient.connected && activeRoomCode) {
+        const outTopic = myRole === 'host'
+          ? `btdcoop_v1/${activeRoomCode}/to_client`
+          : `btdcoop_v1/${activeRoomCode}/to_host`;
+        mqttClient.publish(outTopic, JSON.stringify(msg));
+      } else if (peerConnection && peerConnection.open) {
         peerConnection.send(msg);
       } else if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
         wsConnection.send(JSON.stringify({
@@ -3595,18 +3839,45 @@
       }
     }
 
-    function disconnectCoop() {
-      if (peerConnection) peerConnection.close();
-      if (peerInstance) peerInstance.destroy();
-      if (wsConnection) wsConnection.close();
+    function disconnectCoop(silent = false) {
+      if (mqttClient) {
+        try { mqttClient.end(true); } catch (e) {}
+        mqttClient = null;
+      }
+      if (peerConnection) {
+        try { peerConnection.close(); } catch (e) {}
+        peerConnection = null;
+      }
+      if (peerInstance) {
+        try { peerInstance.destroy(); } catch (e) {}
+        peerInstance = null;
+      }
+      if (wsConnection) {
+        try { wsConnection.close(); } catch (e) {}
+        wsConnection = null;
+      }
       netMode = 'offline';
       peerConnected = false;
       activeRoomCode = null;
-      document.getElementById('btn-host-p2p').disabled = false;
-      document.getElementById('btn-host-p2p').textContent = 'Host Co-Op Session';
-      document.getElementById('host-code-box').style.display = 'none';
+
+      const btnHostP2p = document.getElementById('btn-host-p2p');
+      if (btnHostP2p) {
+        btnHostP2p.disabled = false;
+        btnHostP2p.textContent = 'Host Co-Op Session';
+      }
+      const hostCodeBox = document.getElementById('host-code-box');
+      if (hostCodeBox) hostCodeBox.style.display = 'none';
+
+      const btnHostCloud = document.getElementById('btn-host-cloud');
+      if (btnHostCloud) {
+        btnHostCloud.disabled = false;
+        btnHostCloud.textContent = 'Host Cloud Co-Op';
+      }
+      const cloudCodeBox = document.getElementById('cloud-host-code-box');
+      if (cloudCodeBox) cloudCodeBox.style.display = 'none';
+
       updateNetworkStatusUI();
-      showToast('Switched to Single Player Offline.');
+      if (!silent) showToast('Switched to Single Player Offline.');
     }
 
     // Boot
