@@ -605,7 +605,7 @@
   <!-- Top Header Bar -->
   <div class="top-header">
     <div class="lobby-badge">
-      <span class="version-tag" title="Build Version">v1.1.0-COOP</span>
+      <span class="version-tag" title="Build Version">v1.2.0-COOP</span>
       <button class="btn-lobby-trigger" onclick="openLanModal()">
         <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
       </button>
@@ -622,7 +622,13 @@
     </div>
     <div class="stats-tray">
       <div class="stat-badge lives-c">❤️ <span id="lives-val">100</span></div>
-      <div class="stat-badge cash-c">💰 $<span id="cash-val">800</span></div>
+      <div class="stat-badge cash-c" id="cash-tray" style="display: flex; align-items: center; gap: 6px;">
+        <span>💰</span>
+        <span>$<span id="cash-val">800</span></span>
+        <span id="partner-cash-badge" style="display: none; font-size: 10px; background: rgba(236,72,153,0.18); border: 1px solid rgba(236,72,153,0.5); padding: 1px 6px; border-radius: 4px; color: #f472b6;" title="Partner Cash">
+          <span id="partner-cash-label">P2</span>: $<span id="partner-cash-val">800</span>
+        </span>
+      </div>
       <div class="stat-badge round-c">🎈 Round <span id="round-val">1</span>/40</div>
     </div>
   </div>
@@ -639,7 +645,7 @@
       Captures all network events, WebRTC state, connection handshakes, and uncaught errors.
     </div>
     <div id="debug-log-view" class="debug-log-view">
-      [System] Diagnostic log initialized (v1.1.0-COOP)
+      [System] Diagnostic log initialized (v1.2.0-COOP)
     </div>
     <div style="display: flex; gap: 10px; justify-content: flex-end;">
       <button onclick="clearDebugLog()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Clear Log</button>
@@ -1161,7 +1167,8 @@
     };
 
     // --- 5. Game State ---
-    let cash = 800;
+    let cash = 800; // Local player's cash pool (independent)
+    let partnerCash = 800; // Co-op partner's cash pool (synced for display)
     let lives = 100;
     let currentRound = 1;
     let maxRounds = 40;
@@ -1274,7 +1281,7 @@
                   owner: newT.owner,
                   totalCost: newT.totalCost
                 },
-                newCash: cash
+                senderCash: cash
               });
             }
           }
@@ -1377,6 +1384,8 @@
       document.getElementById('target-select').value = t.targetPriority;
 
       const spec = TOWER_SPECS[t.typeKey];
+      const isCoop = netMode !== 'offline' && peerConnected;
+      const isMyTower = !isCoop || (t.owner === myPlayerName);
 
       // Update Paths 1, 2, 3
       [1, 2, 3].forEach(p => {
@@ -1392,8 +1401,13 @@
           nameEl.textContent = upg.name;
           costEl.textContent = `$${upg.cost}`;
           descEl.textContent = upg.desc;
-          btn.textContent = `Buy ($${upg.cost})`;
-          btn.disabled = cash < upg.cost;
+          if (!isMyTower) {
+            btn.textContent = `Partner's Tower`;
+            btn.disabled = true;
+          } else {
+            btn.textContent = `Buy ($${upg.cost})`;
+            btn.disabled = cash < upg.cost;
+          }
         } else {
           nameEl.textContent = `Path ${p} MAXED`;
           costEl.textContent = 'MAX';
@@ -1404,7 +1418,14 @@
       });
 
       const sellVal = Math.floor(t.totalCost * 0.7);
-      document.getElementById('sell-btn').textContent = `Sell Tower ($${sellVal})`;
+      const sellBtn = document.getElementById('sell-btn');
+      if (!isMyTower) {
+        sellBtn.textContent = `Owned by ${t.owner}`;
+        sellBtn.disabled = true;
+      } else {
+        sellBtn.textContent = `Sell Tower ($${sellVal})`;
+        sellBtn.disabled = false;
+      }
     }
 
     function buyUpgrade(pathNum, fromNet = false) {
@@ -1429,7 +1450,7 @@
               type: 'UPGRADE_TOWER',
               towerId: inspectedTower.id,
               pathNum: pathNum,
-              newCash: cash
+              senderCash: cash
             });
           }
         }
@@ -1450,7 +1471,7 @@
         sendNetMessage({
           type: 'SELL_TOWER',
           towerId: tId,
-          newCash: cash
+          senderCash: cash
         });
       }
     }
@@ -3004,6 +3025,19 @@
       document.getElementById('lives-val').textContent = lives;
       document.getElementById('round-val').textContent = currentRound;
 
+      const partnerBadge = document.getElementById('partner-cash-badge');
+      const partnerVal = document.getElementById('partner-cash-val');
+      const partnerLabel = document.getElementById('partner-cash-label');
+      if (partnerBadge && partnerVal && partnerLabel) {
+        if (netMode !== 'offline' && peerConnected) {
+          partnerBadge.style.display = 'inline-block';
+          partnerVal.textContent = partnerCash;
+          partnerLabel.textContent = myRole === 'host' ? 'P2' : 'Host';
+        } else {
+          partnerBadge.style.display = 'none';
+        }
+      }
+
       for (const [key, spec] of Object.entries(TOWER_SPECS)) {
         const btn = document.getElementById(`btn-tower-${key}`);
         if (btn) {
@@ -3257,6 +3291,55 @@
     // 1. FAILPROOF ENCRYPTED CLOUD CO-OP (MQTT over Secure WebSocket - EMQX)
     // =========================================================================
     let mqttClient = null;
+    let fleetSyncTimer = null;
+
+    function startFleetSyncTimer() {
+      if (fleetSyncTimer) clearInterval(fleetSyncTimer);
+      fleetSyncTimer = setInterval(() => {
+        if (netMode === 'offline' || !peerConnected) return;
+
+        if (myRole === 'host') {
+          sendNetMessage({
+            type: 'SYNC_FLEET',
+            lives,
+            currentRound,
+            isWaveActive,
+            hostCash: cash,
+            towers: towers.map(t => ({
+              id: t.id,
+              typeKey: t.typeKey,
+              x: t.x,
+              y: t.y,
+              owner: t.owner,
+              totalCost: t.totalCost,
+              p1Tier: t.p1Tier,
+              p2Tier: t.p2Tier,
+              p3Tier: t.p3Tier,
+              targetPriority: t.targetPriority,
+              pops: t.pops
+            }))
+          });
+        } else if (myRole === 'client') {
+          sendNetMessage({
+            type: 'CLIENT_HEARTBEAT',
+            clientCash: cash,
+            towers: towers.filter(t => t.owner === myPlayerName).map(t => ({
+              id: t.id,
+              typeKey: t.typeKey,
+              x: t.x,
+              y: t.y,
+              owner: t.owner,
+              totalCost: t.totalCost,
+              p1Tier: t.p1Tier,
+              p2Tier: t.p2Tier,
+              p3Tier: t.p3Tier,
+              targetPriority: t.targetPriority,
+              pops: t.pops
+            }))
+          });
+        }
+      }, 3000);
+    }
 
     function startHostCloud() {
       if (typeof mqtt === 'undefined') {
@@ -3302,12 +3385,13 @@
 
       mqttClient.on('connect', () => {
         logNet(`[Cloud] Connected to secure relay! Subscribing to room channel...`);
-        mqttClient.subscribe(inTopic, (err) => {
+        mqttClient.subscribe(inTopic, { qos: 1 }, (err) => {
           if (err) {
             logNet(`❌ Cloud room subscribe failed: ${err.message}`);
           } else {
             logNet(`✅ Cloud Room ready! Share code: "${activeRoomCode}"`);
             showToast(`🚀 Cloud Room hosted! Code: ${activeRoomCode}`);
+            startFleetSyncTimer();
           }
         });
       });
@@ -3396,7 +3480,7 @@
 
       mqttClient.on('connect', () => {
         logNet(`[Cloud] Connected to secure relay! Subscribing to room channel...`);
-        mqttClient.subscribe(inTopic, (err) => {
+        mqttClient.subscribe(inTopic, { qos: 1 }, (err) => {
           if (err) {
             logNet(`❌ Cloud subscribe error: ${err.message}`);
           } else {
@@ -3404,7 +3488,8 @@
             mqttClient.publish(outTopic, JSON.stringify({
               type: 'JOIN_HELLO',
               senderName: 'Partner (P2)'
-            }));
+            }), { qos: 1 });
+            startFleetSyncTimer();
           }
         });
       });
@@ -3629,6 +3714,7 @@
         updateNetworkStatusUI();
         logNet(`🎉 P2P Data Channel connected successfully with ${peerName}!`);
         showToast(`🎉 Co-Op Connected! Playing with ${peerName}!`);
+        startFleetSyncTimer();
 
         // If host, send current state snapshot to client
         if (myRole === 'host') {
@@ -3730,7 +3816,8 @@
         const outTopic = myRole === 'host'
           ? `btdcoop_v1/${activeRoomCode}/to_client`
           : `btdcoop_v1/${activeRoomCode}/to_host`;
-        mqttClient.publish(outTopic, JSON.stringify(msg));
+        const qos = (msg.type === 'CURSOR_MOVE') ? 0 : 1;
+        mqttClient.publish(outTopic, JSON.stringify(msg), { qos });
       } else if (peerConnection && peerConnection.open) {
         peerConnection.send(msg);
       } else if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
@@ -3768,9 +3855,9 @@
             towers.push(placedTower);
             playSfx('dart');
             createFloatingText(tData.x, tData.y - 20, `${tData.owner} placed ${placedTower.name}!`, '#ec4899');
-            if (msg.newCash !== undefined) cash = msg.newCash;
-            updateUI();
           }
+          if (msg.senderCash !== undefined) partnerCash = msg.senderCash;
+          updateUI();
           break;
 
         case 'UPGRADE_TOWER':
@@ -3778,9 +3865,9 @@
           if (tToUpgrade) {
             inspectedTower = tToUpgrade;
             buyUpgrade(msg.pathNum, true);
-            if (msg.newCash !== undefined) cash = msg.newCash;
-            updateUI();
           }
+          if (msg.senderCash !== undefined) partnerCash = msg.senderCash;
+          updateUI();
           break;
 
         case 'SELL_TOWER':
@@ -3788,9 +3875,9 @@
           if (tToSell) {
             inspectedTower = tToSell;
             sellInspectedTower(true);
-            if (msg.newCash !== undefined) cash = msg.newCash;
-            updateUI();
           }
+          if (msg.senderCash !== undefined) partnerCash = msg.senderCash;
+          updateUI();
           break;
 
         case 'SET_PRIORITY':
@@ -3809,7 +3896,7 @@
           break;
 
         case 'STATE_SNAPSHOT':
-          cash = msg.cash;
+          if (msg.cash !== undefined) partnerCash = msg.cash;
           lives = msg.lives;
           currentRound = msg.currentRound;
           // Synchronize full tower fleet
@@ -3819,6 +3906,7 @@
             restored.id = st.id;
             restored.totalCost = st.totalCost;
             restored.targetPriority = st.targetPriority || 'first';
+            restored.pops = st.pops || 0;
             // Apply tiers
             const spec = TOWER_SPECS[st.typeKey];
             for (let p = 1; p <= 3; p++) {
@@ -3836,10 +3924,89 @@
           updateWavePreview();
           showToast(`🔄 Synced game state from Host!`);
           break;
+
+        case 'SYNC_FLEET':
+          lives = msg.lives !== undefined ? msg.lives : lives;
+          currentRound = msg.currentRound !== undefined ? Math.max(currentRound, msg.currentRound) : currentRound;
+          if (msg.hostCash !== undefined) partnerCash = msg.hostCash;
+          if (msg.towers) {
+            for (const st of msg.towers) {
+              let existing = towers.find(t => t.id === st.id);
+              if (!existing) {
+                existing = createTower(st.typeKey, st.x, st.y, st.owner);
+                existing.id = st.id;
+                existing.totalCost = st.totalCost;
+                existing.targetPriority = st.targetPriority || 'first';
+                existing.pops = st.pops || 0;
+                const spec = TOWER_SPECS[st.typeKey];
+                for (let p = 1; p <= 3; p++) {
+                  const tierCount = st[`p${p}Tier`] || 0;
+                  for (let idx = 0; idx < tierCount; idx++) {
+                    if (spec.upgrades[`path${p}`][idx]) {
+                      spec.upgrades[`path${p}`][idx].apply(existing);
+                      existing[`p${p}Tier`]++;
+                    }
+                  }
+                }
+                towers.push(existing);
+                logNet(`🔄 Auto-healed missing tower: ${existing.name} (${existing.owner})`);
+              } else {
+                const spec = TOWER_SPECS[st.typeKey];
+                for (let p = 1; p <= 3; p++) {
+                  while (existing[`p${p}Tier`] < (st[`p${p}Tier`] || 0)) {
+                    const cTier = existing[`p${p}Tier`];
+                    if (spec.upgrades[`path${p}`][cTier]) {
+                      spec.upgrades[`path${p}`][cTier].apply(existing);
+                      existing[`p${p}Tier`]++;
+                    } else {
+                      break;
+                    }
+                  }
+                }
+                existing.targetPriority = st.targetPriority || existing.targetPriority;
+              }
+            }
+            const hostIds = new Set(msg.towers.map(t => t.id));
+            towers = towers.filter(t => hostIds.has(t.id) || t.owner === myPlayerName || t.owner.includes('P2'));
+          }
+          updateUI();
+          break;
+
+        case 'CLIENT_HEARTBEAT':
+          if (msg.clientCash !== undefined) partnerCash = msg.clientCash;
+          if (msg.towers) {
+            for (const st of msg.towers) {
+              if (!towers.some(t => t.id === st.id)) {
+                const existing = createTower(st.typeKey, st.x, st.y, st.owner);
+                existing.id = st.id;
+                existing.totalCost = st.totalCost;
+                existing.targetPriority = st.targetPriority || 'first';
+                existing.pops = st.pops || 0;
+                const spec = TOWER_SPECS[st.typeKey];
+                for (let p = 1; p <= 3; p++) {
+                  const tierCount = st[`p${p}Tier`] || 0;
+                  for (let idx = 0; idx < tierCount; idx++) {
+                    if (spec.upgrades[`path${p}`][idx]) {
+                      spec.upgrades[`path${p}`][idx].apply(existing);
+                      existing[`p${p}Tier`]++;
+                    }
+                  }
+                }
+                towers.push(existing);
+                logNet(`🔄 Host auto-synced partner tower: ${existing.name}`);
+              }
+            }
+          }
+          updateUI();
+          break;
       }
     }
 
     function disconnectCoop(silent = false) {
+      if (fleetSyncTimer) {
+        clearInterval(fleetSyncTimer);
+        fleetSyncTimer = null;
+      }
       if (mqttClient) {
         try { mqttClient.end(true); } catch (e) {}
         mqttClient = null;
