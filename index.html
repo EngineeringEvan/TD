@@ -1,0 +1,3326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bloons Co-Op TD Ultimate Edition</title>
+  <!-- PeerJS for WebRTC Direct Browser P2P LAN/Internet Multiplayer -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: #090d16;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 8px 12px;
+    }
+
+    /* Top Bar Header */
+    .top-header {
+      width: 1300px;
+      max-width: 100%;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .lobby-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .room-tag {
+      background: #1e1b4b;
+      border: 1px solid #6366f1;
+      color: #a5b4fc;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .coop-status {
+      display: flex;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .player-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: #334155;
+    }
+    .dot-p1 { width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; box-shadow: 0 0 6px #3b82f6; }
+    .dot-p2 { width: 8px; height: 8px; border-radius: 50%; background: #ec4899; box-shadow: 0 0 6px #ec4899; }
+
+    .stats-tray {
+      display: flex;
+      gap: 14px;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .stat-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #0f172a;
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+    .lives-c { color: #f43f5e; }
+    .cash-c { color: #facc15; }
+    .round-c { color: #38bdf8; }
+
+    /* Main Container */
+    .main-layout {
+      display: flex;
+      gap: 12px;
+      width: 1300px;
+      max-width: 100%;
+    }
+
+    /* Canvas Map */
+    .map-frame {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #334155;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+      background: #15803d;
+    }
+    canvas {
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* Wave Preview Badge */
+    .wave-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(4px);
+    }
+    .bloon-chips {
+      display: flex;
+      gap: 5px;
+    }
+    .chip {
+      width: 13px;
+      height: 16px;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    /* Legend */
+    .map-legend {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      background: rgba(15, 23, 42, 0.75);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    /* Right Sidebar */
+    .sidebar {
+      width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 660px;
+    }
+    .panel-box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .panel-heading {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Controls Grid */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 60px;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .btn-round {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      padding: 9px;
+      border-radius: 7px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(37,99,235,0.4);
+      transition: all 0.15s;
+    }
+    .btn-round:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37,99,235,0.6);
+    }
+    .btn-round:disabled {
+      background: #475569;
+      color: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .btn-speed {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      border-radius: 7px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .btn-speed.turbo {
+      background: #8b5cf6;
+      border-color: #a78bfa;
+      color: white;
+    }
+
+    /* Auto Play Bar */
+    .auto-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0f172a;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      cursor: pointer;
+    }
+    .toggle-knob {
+      position: relative;
+      width: 36px;
+      height: 18px;
+      background: #334155;
+      border-radius: 18px;
+      transition: 0.2s;
+    }
+    .toggle-knob::after {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: white;
+      top: 3px;
+      left: 3px;
+      transition: 0.2s;
+    }
+    .toggle-knob.active {
+      background: #10b981;
+    }
+    .toggle-knob.active::after {
+      left: 21px;
+    }
+
+    /* Towers Store Grid */
+    .towers-scroll {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      max-height: 255px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .tower-btn {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 5px 6px;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: all 0.12s ease;
+      position: relative;
+      text-align: left;
+    }
+    .tower-btn:hover:not(:disabled) {
+      border-color: #38bdf8;
+      background: #1e293b;
+      transform: translateY(-1px);
+    }
+    .tower-btn.selected {
+      border-color: #3b82f6;
+      background: #1e3a8a;
+      box-shadow: 0 0 10px rgba(59,130,246,0.5);
+    }
+    .tower-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .hotkey-badge {
+      position: absolute;
+      top: 3px;
+      right: 4px;
+      font-size: 9px;
+      background: #334155;
+      padding: 0 3px;
+      border-radius: 3px;
+      color: #94a3b8;
+    }
+    .tower-title {
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tower-cost {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #facc15;
+    }
+
+    /* Upgrades Pane (3 Paths!) */
+    .upgrade-pane {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 270px;
+      overflow-y: auto;
+    }
+    .path-row {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 5px 7px;
+    }
+    .path-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+    .path-desc {
+      font-size: 10px;
+      color: #94a3b8;
+      margin: 2px 0 3px 0;
+    }
+    .btn-buy-upgrade {
+      width: 100%;
+      background: #059669;
+      color: white;
+      border: none;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      transition: 0.12s;
+    }
+    .btn-buy-upgrade:hover:not(:disabled) {
+      background: #10b981;
+    }
+    .btn-buy-upgrade:disabled {
+      background: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+    .btn-sell {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 5px;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      margin-top: 2px;
+    }
+    .btn-sell:hover { background: #ef4444; }
+
+    .target-dropdown {
+      width: 100%;
+      background: #0f172a;
+      color: white;
+      border: 1px solid #334155;
+      padding: 4px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 2px;
+    }
+
+    /* Modal Banner */
+    .game-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15, 23, 42, 0.97);
+      border: 2px solid #475569;
+      border-radius: 14px;
+      padding: 24px 32px;
+      text-align: center;
+      display: none;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.85);
+      z-index: 50;
+      backdrop-filter: blur(8px);
+    }
+    .game-modal h2 { font-size: 26px; margin-bottom: 6px; }
+    /* LAN / Co-Op Lobby Styles */
+    .btn-lobby-trigger {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: white;
+      border: 1px solid #34d399;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(16,185,129,0.3);
+      transition: all 0.15s;
+    }
+    .btn-lobby-trigger:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16,185,129,0.5);
+    }
+    .lan-modal {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 540px;
+      max-width: 95%;
+      background: rgba(15, 23, 42, 0.98);
+      border: 2px solid #38bdf8;
+      border-radius: 14px;
+      padding: 20px 24px;
+      z-index: 120;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+      backdrop-filter: blur(10px);
+    }
+    .lan-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 10px;
+    }
+    .lan-tab-btn {
+      flex: 1;
+      padding: 8px 12px;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .lan-tab-btn.active {
+      background: #0284c7;
+      color: white;
+      border-color: #38bdf8;
+    }
+    .lan-input {
+      width: 100%;
+      background: #020617;
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 4px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+    .lan-input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 8px rgba(56,189,248,0.3);
+    }
+    .lan-action-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .lan-action-btn:hover {
+      box-shadow: 0 4px 14px rgba(37,99,235,0.5);
+    }
+    .room-code-display {
+      background: #020617;
+      border: 2px dashed #38bdf8;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      margin: 10px 0;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 0.25em;
+      color: #38bdf8;
+      cursor: pointer;
+    }
+    .status-toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1e293b;
+      border: 1px solid #475569;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: white;
+      display: none;
+      z-index: 200;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Bar -->
+  <div class="top-header">
+    <div class="lobby-badge">
+      <button class="btn-lobby-trigger" onclick="openLanModal()">
+        <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
+      </button>
+      <div class="coop-status">
+        <div class="player-pill" id="pill-p1"><span class="dot-p1"></span> <span id="name-p1">P1 (Host)</span></div>
+        <div class="player-pill" id="pill-p2"><span class="dot-p2" id="dot-p2-icon" style="background:#64748b; box-shadow:none;"></span> <span id="name-p2">P2 (Waiting...)</span></div>
+      </div>
+      <button style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border: 1px solid #a78bfa; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 8px rgba(124,58,237,0.4);" onclick="openModelViewer()">
+        <span>🎨</span> 3D Reference Sheet
+      </button>
+    </div>
+    <div class="stats-tray">
+      <div class="stat-badge lives-c">❤️ <span id="lives-val">100</span></div>
+      <div class="stat-badge cash-c">💰 $<span id="cash-val">800</span></div>
+      <div class="stat-badge round-c">🎈 Round <span id="round-val">1</span>/40</div>
+    </div>
+  </div>
+
+  <!-- LAN / Online Co-Op Lobby Modal -->
+  <div id="lan-modal" class="lan-modal">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+      <div>
+        <h2 style="font-size: 20px; color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+          <span>🌐</span> Real-Time LAN & Online Co-Op
+        </h2>
+        <p style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Connect over your local Wi-Fi/Ethernet or via WebRTC direct browser P2P</p>
+      </div>
+      <button onclick="closeLanModal()" style="background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">✕</button>
+    </div>
+
+    <!-- Mode Selector Tabs -->
+    <div class="lan-tabs">
+      <button id="lan-tab-p2p" class="lan-tab-btn active" onclick="switchLanTab('p2p')">⚡ Direct Browser P2P (Code)</button>
+      <button id="lan-tab-ws" class="lan-tab-btn" onclick="switchLanTab('ws')">🖥️ Dedicated LAN Node Server</button>
+    </div>
+
+    <!-- TAB 1: Browser P2P (PeerJS / WebRTC) -->
+    <div id="tab-content-p2p">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <!-- Host Section -->
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
+          <h3 style="font-size: 14px; color: #38bdf8; margin-bottom: 6px;">1. Host Game</h3>
+          <p style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">Create a room code to give your friend on LAN or Internet.</p>
+          <div id="host-code-box" style="display: none;">
+            <label style="font-size: 10.5px; color: #cbd5e1; font-weight: 600;">Share Room Code with Partner:</label>
+            <div id="display-room-code" class="room-code-display" onclick="copyRoomCode()" title="Click to copy">----</div>
+            <div style="font-size: 10px; color: #10b981; text-align: center; margin-bottom: 8px;">📋 Click code above to copy!</div>
+          </div>
+          <button id="btn-host-p2p" class="lan-action-btn" onclick="startHostP2P()">Host Co-Op Session</button>
+        </div>
+
+        <!-- Join Section -->
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
+          <h3 style="font-size: 14px; color: #ec4899; margin-bottom: 6px;">2. Join Game</h3>
+          <p style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">Enter the code from the host player:</p>
+          <label style="font-size: 10.5px; color: #cbd5e1; font-weight: 600;">Enter 4-6 Letter Room Code:</label>
+          <input id="input-join-code" class="lan-input" type="text" placeholder="e.g. DART99" maxlength="10" style="text-transform: uppercase;" />
+          <button id="btn-join-p2p" class="lan-action-btn" style="background: linear-gradient(135deg, #db2777, #ec4899);" onclick="joinP2P()">Connect & Join</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Dedicated LAN Node Server (server.js) -->
+    <div id="tab-content-ws" style="display: none;">
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
+        <h3 style="font-size: 14px; color: #10b981; margin-bottom: 6px;">Zero-Dependency Node.js Server Mode</h3>
+        <p style="font-size: 11.5px; color: #cbd5e1; line-height: 1.5; margin-bottom: 10px;">
+          You can also run <code>node server.js</code> in this folder to host across any devices on your home Wi-Fi (PC, Mac, iPhone, iPad, Android).
+        </p>
+        <div style="background: #020617; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 11px; color: #38bdf8; margin-bottom: 10px;">
+          <div>1. In terminal: <code>node server.js</code></div>
+          <div>2. Other devices navigate to: <code>http://10.71.130.13:3000/</code></div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input id="input-ws-url" class="lan-input" type="text" value="ws://localhost:3000" style="margin-bottom: 0;" />
+          <button class="lan-action-btn" style="width: 140px; background: #10b981;" onclick="connectWebSocketServer()">Connect</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Current Network Status Footer -->
+    <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px;">
+      <div id="net-status-text" style="color: #94a3b8;">Status: <span>Offline (Single Player)</span></div>
+      <button onclick="disconnectCoop()" style="background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 11px;">Disconnect</button>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="status-toast" class="status-toast">Notification message</div>
+
+  <!-- Main Game Layout -->
+  <div class="main-layout">
+    <!-- Map Frame -->
+    <div class="map-frame">
+      <canvas id="gameCanvas" width="940" height="650"></canvas>
+
+      <!-- Wave Preview Chips -->
+      <div class="wave-badge">
+        <span>Incoming:</span>
+        <div class="bloon-chips" id="wave-chips"></div>
+      </div>
+
+      <!-- Hotkeys Hint -->
+      <div class="map-legend">
+        Keys: <strong>[1-9, 0]</strong> Towers | <strong>[Space]</strong> Wave | <strong>[Tab]</strong> Speed | <strong>[Esc]</strong> Cancel
+      </div>
+
+      <!-- Victory/Defeat Banner -->
+      <div id="game-modal" class="game-modal">
+        <h2 id="modal-title">Game Over</h2>
+        <p id="modal-desc">The bloons overwhelmed your defenses!</p>
+        <button class="btn-modal" onclick="restartGame()">Play Again</button>
+      </div>
+
+      <!-- High-Quality 3D Model Reference Inspector Modal -->
+      <div id="model-modal" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 880px; max-width: 95%; max-height: 90vh; background: rgba(15, 23, 42, 0.98); border: 2px solid #6366f1; border-radius: 14px; padding: 18px 22px; z-index: 100; box-shadow: 0 20px 60px rgba(0,0,0,0.9); backdrop-filter: blur(10px); overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 14px;">
+          <div>
+            <h2 style="font-size: 20px; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+              <span>🏆</span> High-Fidelity 3D Model Reference Benchmark
+            </h2>
+            <p style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Production-grade 3D character benchmark for Bloons-style game development</p>
+          </div>
+          <button onclick="closeModelViewer()" style="background: #334155; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">✕ Close</button>
+        </div>
+
+        <!-- Model Switcher Tabs -->
+        <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+          <button id="tab-dart" onclick="switchModel('dart')" style="flex: 1; padding: 10px; background: #4338ca; color: white; border: 1px solid #6366f1; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span>🎯</span> Classic Dart Monkey (Mascot Model)
+          </button>
+          <button id="tab-dark" onclick="switchModel('dark')" style="flex: 1; padding: 10px; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span>🥷</span> Dark Monkey / Crossbow Master (Tier 5 Model)
+          </button>
+        </div>
+
+        <!-- Content Area: Image + Technical Specs -->
+        <div style="display: grid; grid-template-columns: 380px 1fr; gap: 18px;">
+          <!-- 3D Render Display -->
+          <div style="background: #020617; border: 1px solid #334155; border-radius: 10px; overflow: hidden; position: relative; box-shadow: 0 4px 16px rgba(0,0,0,0.6);">
+            <img id="model-img" src="dart_monkey_model.jpg" style="width: 100%; height: 380px; object-fit: cover; display: block;" alt="3D Model Reference" />
+            <div id="model-caption" style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); padding: 8px 12px; font-size: 11.5px; color: #e2e8f0;">
+              <strong>Model:</strong> Dart Monkey Hero Mesh | <strong>Lighting:</strong> Studio 3-Point PBR
+            </div>
+          </div>
+
+          <!-- Technical Production Specs -->
+          <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px;">
+              <h4 style="color: #38bdf8; font-size: 13px; margin-bottom: 6px;">📐 Technical 3D Asset Specifications</h4>
+              <ul style="list-style: none; padding-left: 0; display: flex; flex-direction: column; gap: 5px; color: #cbd5e1;">
+                <li>🔹 <strong>Polygon Budget:</strong> ~4,500 – 6,500 tris (optimized for 60+ simultaneous towers on screen)</li>
+                <li>🔹 <strong>Shader Pipeline:</strong> Stylized PBR (Albedo/Diffuse, Smoothness/Roughness, Ambient Occlusion, Subsurface Scattering for ears/cheeks)</li>
+                <li>🔹 <strong>Texture Resolution:</strong> 1024x1024 Texture Atlas (packs body, accessories, and dart on a single sheet)</li>
+                <li>🔹 <strong>Skeletal Rig:</strong> 24 bones (Biped spine, eye blink morph targets, tail FK/IK chain, right hand weapon socket)</li>
+              </ul>
+            </div>
+
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px;">
+              <h4 style="color: #facc15; font-size: 13px; margin-bottom: 6px;">🎬 Animation Clip Requirements</h4>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; color: #cbd5e1; font-size: 11px;">
+                <div style="background: #0f172a; padding: 5px 8px; border-radius: 4px;">• <strong>Idle (Breathing/Ears twitch):</strong> 60 frames</div>
+                <div style="background: #0f172a; padding: 5px 8px; border-radius: 4px;">• <strong>Aim Blend Space:</strong> 360° horizontal track</div>
+                <div style="background: #0f172a; padding: 5px 8px; border-radius: 4px;">• <strong>Throw Attack (Windup + Release):</strong> 14 frames</div>
+                <div style="background: #0f172a; padding: 5px 8px; border-radius: 4px;">• <strong>Tier Upgrade Flash:</strong> Jump & Victory cheer</div>
+              </div>
+            </div>
+
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; color: #94a3b8; font-size: 11px;">
+              💡 <em>In a full engine (Godot 4 or Unity), you can import this mesh as an FBX/glTF file and render hundreds of instances using GPU Instancing with zero frame drops!</em>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Controls Sidebar -->
+    <div class="sidebar">
+      <!-- Wave Trigger & Options -->
+      <div class="panel-box">
+        <div class="controls-grid">
+          <button id="wave-btn" class="btn-round" onclick="triggerNextWave()">▶ Start Round</button>
+          <button id="speed-btn" class="btn-speed" onclick="cycleGameSpeed()">1x</button>
+        </div>
+        <div class="auto-bar" onclick="toggleAutoPlay()">
+          <span>Auto-Start Next Round</span>
+          <div id="auto-knob" class="toggle-knob"></div>
+        </div>
+      </div>
+
+      <!-- Towers Deployment Grid (10 Towers!) -->
+      <div class="panel-box">
+        <div class="panel-heading">
+          <span>Deploy Towers (10)</span>
+          <span style="font-size:9.5px; color:#64748b;">(Buccaneer = Water Only)</span>
+        </div>
+        <div class="towers-scroll" id="towers-container">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Tower Inspection & 3-Path Upgrades Card -->
+      <div class="panel-box" id="upgrade-card" style="display: none;">
+        <div class="panel-heading">
+          <span id="inspect-title">Dart Monkey</span>
+          <span id="inspect-pops" style="color:#38bdf8; font-size:10.5px;">0 Pops</span>
+        </div>
+
+        <div class="upgrade-pane">
+          <div>
+            <label style="font-size: 10px; color: #94a3b8; font-weight: 600;">Target Priority:</label>
+            <select id="target-select" class="target-dropdown" onchange="setTargetPriority(this.value)">
+              <option value="first">First</option>
+              <option value="last">Last</option>
+              <option value="strong">Strongest</option>
+              <option value="close">Closest</option>
+            </select>
+          </div>
+
+          <!-- Path 1 -->
+          <div class="path-row">
+            <div class="path-header">
+              <span id="p1-name">Path 1 Upgrade</span>
+              <span id="p1-cost" style="color:#facc15;">$150</span>
+            </div>
+            <div id="p1-desc" class="path-desc">+2 Pierce</div>
+            <button id="p1-btn" class="btn-buy-upgrade" onclick="buyUpgrade(1)">Buy Path 1</button>
+          </div>
+
+          <!-- Path 2 -->
+          <div class="path-row">
+            <div class="path-header">
+              <span id="p2-name">Path 2 Upgrade</span>
+              <span id="p2-cost" style="color:#facc15;">$150</span>
+            </div>
+            <div id="p2-desc" class="path-desc">+40% Speed</div>
+            <button id="p2-btn" class="btn-buy-upgrade" onclick="buyUpgrade(2)">Buy Path 2</button>
+          </div>
+
+          <!-- Path 3 (NEW!) -->
+          <div class="path-row">
+            <div class="path-header">
+              <span id="p3-name">Path 3 Upgrade</span>
+              <span id="p3-cost" style="color:#facc15;">$150</span>
+            </div>
+            <div id="p3-desc" class="path-desc">Camo / Range</div>
+            <button id="p3-btn" class="btn-buy-upgrade" onclick="buyUpgrade(3)">Buy Path 3</button>
+          </div>
+
+          <button id="sell-btn" class="btn-sell" onclick="sellInspectedTower()">Sell Tower ($150)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- 3D Texture Sprites & Field Render Mode ---
+    let fieldRenderMode = '3d'; // '3d' or 'deluxe'
+    const dart3dImg = new Image();
+    dart3dImg.src = 'dart_monkey_model.jpg';
+    const dark3dImg = new Image();
+    dark3dImg.src = 'dark_knight_monkey.jpg';
+
+    function toggleFieldRenderMode() {
+      fieldRenderMode = fieldRenderMode === '3d' ? 'deluxe' : '3d';
+      const btn = document.getElementById('render-mode-btn');
+      if (fieldRenderMode === '3d') {
+        btn.innerHTML = '<span>✨</span> Field Visuals: 3D Tokens';
+        btn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+      } else {
+        btn.innerHTML = '<span>🎨</span> Field Visuals: Deluxe Vector';
+        btn.style.background = 'linear-gradient(135deg, #2563eb, #3b82f6)';
+      }
+    }
+
+    // --- 1. Sound Synthesis Engine ---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let actx = null;
+    function playSfx(type) {
+      try {
+        if (!actx) actx = new AudioCtx();
+        const t = actx.currentTime;
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.connect(gain);
+        gain.connect(actx.destination);
+
+        if (type === 'pop') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(650 + Math.random()*300, t);
+          osc.frequency.exponentialRampToValueAtTime(100, t + 0.04);
+          gain.gain.setValueAtTime(0.16, t);
+          gain.gain.linearRampToValueAtTime(0, t + 0.04);
+          osc.start(t); osc.stop(t + 0.04);
+        } else if (type === 'dart') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(540, t);
+          osc.frequency.exponentialRampToValueAtTime(260, t + 0.035);
+          gain.gain.setValueAtTime(0.08, t);
+          gain.gain.linearRampToValueAtTime(0, t + 0.035);
+          osc.start(t); osc.stop(t + 0.035);
+        } else if (type === 'bomb') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, t);
+          osc.frequency.exponentialRampToValueAtTime(25, t + 0.2);
+          gain.gain.setValueAtTime(0.28, t);
+          gain.gain.linearRampToValueAtTime(0, t + 0.2);
+          osc.start(t); osc.stop(t + 0.2);
+        } else if (type === 'freeze') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(850, t);
+          osc.frequency.linearRampToValueAtTime(1350, t + 0.08);
+          gain.gain.setValueAtTime(0.12, t);
+          gain.gain.linearRampToValueAtTime(0, t + 0.08);
+          osc.start(t); osc.stop(t + 0.08);
+        } else if (type === 'magic') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(450, t);
+          osc.frequency.exponentialRampToValueAtTime(850, t + 0.07);
+          gain.gain.setValueAtTime(0.14, t);
+          gain.gain.linearRampToValueAtTime(0, t + 0.07);
+          osc.start(t); osc.stop(t + 0.07);
+        } else if (type === 'sniper') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(300, t);
+          osc.frequency.exponentialRampToValueAtTime(80, t + 0.06);
+          gain.gain.setValueAtTime(0.2, t);
+          gain.gain.linearRampToValueAtTime(0, t + 0.06);
+          osc.start(t); osc.stop(t + 0.06);
+        }
+      } catch (e) {}
+    }
+
+    // --- 2. Canvas & Beautiful Map Setup ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Strategic Winding Waypoints
+    const WAYPOINTS = [
+      { x: -30, y: 140 },
+      { x: 230, y: 140 },
+      { x: 230, y: 360 },
+      { x: 80,  y: 360 },
+      { x: 80,  y: 540 },
+      { x: 440, y: 540 },
+      { x: 440, y: 120 },
+      { x: 690, y: 120 },
+      { x: 690, y: 460 },
+      { x: 820, y: 460 },
+      { x: 820, y: 260 },
+      { x: 970, y: 260 }
+    ];
+
+    let pathSegments = [];
+    let totalPathLength = 0;
+    for (let i = 0; i < WAYPOINTS.length - 1; i++) {
+      const dx = WAYPOINTS[i+1].x - WAYPOINTS[i].x;
+      const dy = WAYPOINTS[i+1].y - WAYPOINTS[i].y;
+      const len = Math.hypot(dx, dy);
+      pathSegments.push({ p1: WAYPOINTS[i], p2: WAYPOINTS[i+1], len, startDist: totalPathLength });
+      totalPathLength += len;
+    }
+
+    function getPositionOnPath(dist) {
+      if (dist >= totalPathLength) return { x: WAYPOINTS[WAYPOINTS.length-1].x, y: WAYPOINTS[WAYPOINTS.length-1].y };
+      for (const seg of pathSegments) {
+        if (dist >= seg.startDist && dist <= seg.startDist + seg.len) {
+          const t = (dist - seg.startDist) / seg.len;
+          return {
+            x: seg.p1.x + (seg.p2.x - seg.p1.x) * t,
+            y: seg.p1.y + (seg.p2.y - seg.p1.y) * t
+          };
+        }
+      }
+      return { x: WAYPOINTS[0].x, y: WAYPOINTS[0].y };
+    }
+
+    // Scenery Props: Water Lake Pond, Rocks, Trees
+    const POND = { x: 570, y: 290, rx: 85, ry: 60 };
+    const TREES = [
+      { x: 40,  y: 60,  r: 28 },
+      { x: 125, y: 65,  r: 24 },
+      { x: 330, y: 45,  r: 26 },
+      { x: 550, y: 510, r: 32 },
+      { x: 615, y: 550, r: 26 },
+      { x: 890, y: 90,  r: 30 },
+      { x: 900, y: 560, r: 28 },
+      { x: 290, y: 460, r: 24 }
+    ];
+
+    // --- 3. Bloons Ecosystem (Expanded with Camo, Lead, Zebra, Rainbow, Purple, ZOMG!) ---
+    const BLOON_TYPES = {
+      red:     { color: '#ef4444', speed: 1.0,  radius: 12, hp: 1,  reward: 1, next: null },
+      blue:    { color: '#3b82f6', speed: 1.35, radius: 13, hp: 1,  reward: 1, next: 'red' },
+      green:   { color: '#22c55e', speed: 1.7,  radius: 14, hp: 1,  reward: 1, next: 'blue' },
+      yellow:  { color: '#eab308', speed: 2.7,  radius: 15, hp: 1,  reward: 1, next: 'green' },
+      pink:    { color: '#ec4899', speed: 3.4,  radius: 16, hp: 1,  reward: 1, next: 'yellow' },
+      black:   { color: '#18181b', speed: 1.8,  radius: 14, hp: 1,  reward: 2, next: 'pink', isImmuneExplosion: true },
+      white:   { color: '#f8fafc', speed: 1.9,  radius: 14, hp: 1,  reward: 2, next: 'pink', isImmuneFreeze: true },
+      purple:  { color: '#9333ea', speed: 3.0,  radius: 15, hp: 1,  reward: 3, next: 'pink', isImmuneEnergy: true },
+      lead:    { color: '#94a3b8', speed: 1.0,  radius: 16, hp: 2,  reward: 3, next: 'black', isLead: true },
+      zebra:   { color: '#cbd5e1', speed: 1.8,  radius: 16, hp: 1,  reward: 3, next: 'black', childrenCount: 2, isZebra: true, isImmuneExplosion: true, isImmuneFreeze: true },
+      rainbow: { color: '#f43f5e', speed: 2.1,  radius: 17, hp: 1,  reward: 4, next: 'zebra', childrenCount: 2, isRainbow: true },
+      ceramic: { color: '#9a3412', speed: 2.4,  radius: 18, hp: 12, reward: 8, next: 'rainbow', isCeramic: true },
+      moab:    { color: '#0284c7', speed: 0.75, radius: 30, hp: 140,reward: 80, next: 'ceramic', childrenCount: 4, isMoab: true },
+      bfb:     { color: '#dc2626', speed: 0.55, radius: 38, hp: 380,reward: 220,next: 'moab', childrenCount: 2, isMoab: true, isBfb: true },
+      zomg:    { color: '#16a34a', speed: 0.38, radius: 46, hp: 1000,reward: 500,next: 'bfb', childrenCount: 4, isMoab: true, isZomg: true }
+    };
+
+    // --- 4. 10 Distinct Towers with 3 Upgrade Paths each! ---
+    const TOWER_SPECS = {
+      dart: {
+        name: 'Dart Monkey', icon: '🎯', cost: 200, range: 115, fireRate: 1.15, projectileSpeed: 9.5, damage: 1, pierce: 1, color: '#92400e',
+        upgrades: {
+          path1: [{ name: 'Sharp Darts', cost: 140, desc: '+2 Pierce', apply: (t) => t.pierce += 2 }, { name: 'Spike-o-pult', cost: 350, desc: '+2 Dmg, +5 Pierce, Pops Lead', apply: (t) => { t.damage += 2; t.pierce += 5; t.canPopLead = true; } }],
+          path2: [{ name: 'Quick Shots', cost: 120, desc: '+40% Attack Speed', apply: (t) => t.fireRate *= 1.4 }, { name: 'Crossbow', cost: 480, desc: 'Huge Range & Double Damage', apply: (t) => { t.range += 55; t.damage += 2; } }],
+          path3: [{ name: 'Enhanced Vision', cost: 100, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }, { name: 'Sharpshooter', cost: 600, desc: 'High Critical Hit Chance', apply: (t) => { t.damage += 3; } }]
+        }
+      },
+      boomerang: {
+        name: 'Boomerang', icon: '🪃', cost: 320, range: 110, fireRate: 1.0, projectileSpeed: 8, damage: 1, pierce: 4, color: '#b45309', isBoomerang: true,
+        upgrades: {
+          path1: [{ name: 'Improved Rangs', cost: 180, desc: '+4 Pierce', apply: (t) => t.pierce += 4 }, { name: 'Glaives', cost: 380, desc: 'Fast Glaives, +1 Dmg, Pops Lead', apply: (t) => { t.damage += 1; t.canPopLead = true; } }],
+          path2: [{ name: 'Faster Throwing', cost: 160, desc: '+45% Attack Speed', apply: (t) => t.fireRate *= 1.45 }, { name: 'Bionic Boomerang', cost: 650, desc: 'Cybernetic Arm 2.5x Fire Rate', apply: (t) => t.fireRate *= 2.5 }],
+          path3: [{ name: 'Red Hot Rangs', cost: 200, desc: 'Burns Bloons & Pops Lead', apply: (t) => t.canPopLead = true }, { name: 'Kylie Boomerang', cost: 500, desc: 'Straight Heavy Throw, +2 Dmg', apply: (t) => { t.damage += 2; t.pierce += 5; } }]
+        }
+      },
+      tack: {
+        name: 'Tack Shooter', icon: '📍', cost: 280, range: 85, fireRate: 0.9, projectileSpeed: 8, damage: 1, pierce: 2, color: '#f97316', isTack: true,
+        upgrades: {
+          path1: [{ name: 'Faster Shooting', cost: 150, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Ring of Fire', cost: 620, desc: 'Burst of Flames, Melts Lead', apply: (t) => { t.damage += 2; t.canPopLead = true; t.isFire = true; } }],
+          path2: [{ name: 'More Tacks', cost: 140, desc: 'Shoots 12 Tacks instead of 8', apply: (t) => t.tackCount = 12 }, { name: 'Blade Shooter', cost: 450, desc: 'Sharp Razor Blades, +1 Dmg', apply: (t) => { t.damage += 1; t.pierce += 3; } }],
+          path3: [{ name: 'Long Range Tacks', cost: 110, desc: '+30% Tack Range', apply: (t) => t.range *= 1.3 }, { name: 'Tack Sprayer', cost: 500, desc: 'Shoots 16 Tacks in all directions', apply: (t) => t.tackCount = 16 }]
+        }
+      },
+      bomb: {
+        name: 'Bomb Cannon', icon: '💣', cost: 420, range: 125, fireRate: 0.65, projectileSpeed: 7, damage: 2, splashRadius: 70, pierce: 14, isExplosive: true, canPopLead: true, color: '#475569',
+        upgrades: {
+          path1: [{ name: 'Bigger Bombs', cost: 260, desc: '+40% Blast Radius', apply: (t) => { t.splashRadius *= 1.4; t.damage += 1; } }, { name: 'MOAB Eliminator', cost: 900, desc: '6x Damage to MOAB & Blimps', apply: (t) => t.moabMultiplier = 6 }],
+          path2: [{ name: 'Faster Reload', cost: 220, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Cluster Bombs', cost: 700, desc: 'Splits into 6 secondary bombs', apply: (t) => t.hasCluster = true }],
+          path3: [{ name: 'Extra Range', cost: 180, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Frag Bombs', cost: 400, desc: 'Shoots sharp shrapnel on impact', apply: (t) => t.pierce += 6 }]
+        }
+      },
+      ice: {
+        name: 'Ice Monkey', icon: '❄️', cost: 360, range: 90, fireRate: 0.85, damage: 1, pierce: 20, isAoePulse: true, color: '#38bdf8',
+        upgrades: {
+          path1: [{ name: 'Permafrost', cost: 200, desc: 'Permanently slows bloons by 40%', apply: (t) => t.permafrost = true }, { name: 'Deep Freeze', cost: 380, desc: 'Freezes 2 Layers Deep + Lead', apply: (t) => { t.damage += 1; t.canPopLead = true; } }],
+          path2: [{ name: 'Enhanced Frost', cost: 160, desc: '+40% Range', apply: (t) => t.range *= 1.4 }, { name: 'Arctic Wind', cost: 750, desc: 'Massive freeze aura, fast rate', apply: (t) => { t.range *= 1.35; t.fireRate *= 1.4; } }],
+          path3: [{ name: 'Snap Freeze', cost: 220, desc: 'Freezes bloons for 50% longer', apply: (t) => t.freezeDuration = 2.0 }, { name: 'Icicles', cost: 680, desc: 'Bloons grow sharp icicles', apply: (t) => t.damage += 2 }]
+        }
+      },
+      sniper: {
+        name: 'Sniper Monkey', icon: '🎯', cost: 400, range: 9999, fireRate: 0.45, damage: 3, pierce: 1, color: '#15803d', isSniper: true,
+        upgrades: {
+          path1: [{ name: 'Full Metal Jacket', cost: 250, desc: '+3 Dmg, Melts Lead & Ceramics', apply: (t) => { t.damage += 3; t.canPopLead = true; } }, { name: 'Deadly Precision', cost: 800, desc: 'Deals 20 Damage per shot', apply: (t) => t.damage += 14 }],
+          path2: [{ name: 'Night Vision', cost: 180, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }, { name: 'Semi-Automatic', cost: 750, desc: '3x Faster Firing Speed', apply: (t) => t.fireRate *= 3.0 }],
+          path3: [{ name: 'Fast Firing', cost: 200, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Shrapnel Shot', cost: 500, desc: 'Bursts into 5 shrapnel shards', apply: (t) => t.hasShrapnel = true }]
+        }
+      },
+      ninja: {
+        name: 'Ninja Monkey', icon: '🥷', cost: 480, range: 120, fireRate: 1.5, projectileSpeed: 11, damage: 1, pierce: 2, canSeeCamo: true, color: '#7f1d1d', isNinja: true,
+        upgrades: {
+          path1: [{ name: 'Ninja Discipline', cost: 220, desc: '+35% Attack Speed & Range', apply: (t) => { t.fireRate *= 1.35; t.range += 15; } }, { name: 'Sharp Shurikens', cost: 400, desc: '+3 Pierce per Shuriken', apply: (t) => t.pierce += 3 }],
+          path2: [{ name: 'Distraction', cost: 250, desc: 'Knocks bloons backward on hit', apply: (t) => t.knockback = true }, { name: 'Flash Bomb', cost: 750, desc: 'Throws stun bombs, pops Lead', apply: (t) => { t.hasFlashBomb = true; t.canPopLead = true; } }],
+          path3: [{ name: 'Seeking Shuriken', cost: 240, desc: 'Shurikens home in on Bloons', apply: (t) => t.isHoming = true }, { name: 'Double Shot', cost: 680, desc: 'Throws 2 Shurikens at once', apply: (t) => t.doubleShot = true }]
+        }
+      },
+      buccaneer: {
+        name: 'Buccaneer', icon: '⛵', cost: 500, range: 130, fireRate: 1.0, projectileSpeed: 9, damage: 1, pierce: 3, color: '#0369a1', isWaterOnly: true, isShip: true,
+        upgrades: {
+          path1: [{ name: 'Faster Firing', cost: 200, desc: '+50% Cannons Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Cannon Ship', cost: 650, desc: 'Adds heavy explosive cannon', apply: (t) => { t.isExplosive = true; t.damage += 2; t.canPopLead = true; } }],
+          path2: [{ name: 'Grape Shot', cost: 220, desc: 'Sprays 5 grape scatter pellets', apply: (t) => t.hasGrapes = true }, { name: 'Crow Nest', cost: 300, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }],
+          path3: [{ name: 'Longer Cannons', cost: 180, desc: '+30% Range', apply: (t) => t.range *= 1.3 }, { name: 'Merchantman', cost: 800, desc: 'Generates +$250 cash per round', apply: (t) => t.incomeBonus = 250 }]
+        }
+      },
+      wizard: {
+        name: 'Wizard Monkey', icon: '🧙', cost: 550, range: 135, fireRate: 1.0, projectileSpeed: 8.5, damage: 2, pierce: 3, isHoming: true, canPopLead: true, color: '#8b5cf6',
+        upgrades: {
+          path1: [{ name: 'Arcane Blast', cost: 300, desc: '+2 Damage per shot', apply: (t) => t.damage += 2 }, { name: 'Arcane Mastery', cost: 800, desc: 'Huge Speed, +4 Damage', apply: (t) => { t.damage += 4; t.fireRate *= 1.5; } }],
+          path2: [{ name: 'Fireball', cost: 320, desc: 'Heavy Explosive Impact', apply: (t) => { t.hasFireball = true; t.splashRadius = 60; } }, { name: 'Wall of Fire', cost: 700, desc: 'Blazing wall that melts Lead', apply: (t) => t.damage += 3 }],
+          path3: [{ name: 'Guided Magic', cost: 180, desc: 'Spell tracks Camo Bloons', apply: (t) => t.canSeeCamo = true }, { name: 'Necromancer', cost: 950, desc: 'Reanimates popped bloons!', apply: (t) => t.isNecromancer = true }]
+        }
+      },
+      super: {
+        name: 'Super Monkey', icon: '🦸', cost: 1400, range: 160, fireRate: 7.0, projectileSpeed: 13, damage: 1, pierce: 2, color: '#f59e0b', isSuper: true,
+        upgrades: {
+          path1: [{ name: 'Laser Blasts', cost: 950, desc: 'Pops Frozen Bloons & +2 Pierce', apply: (t) => { t.pierce += 2; t.isLaser = true; } }, { name: 'Plasma Blasts', cost: 1700, desc: 'Double Speed & Melts Lead', apply: (t) => { t.fireRate *= 1.6; t.damage += 1; t.canPopLead = true; } }],
+          path2: [{ name: 'Super Range', cost: 650, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Epic Darts', cost: 1100, desc: '+4 Pierce & Hyperspeed', apply: (t) => { t.pierce += 4; t.projectileSpeed *= 1.3; } }],
+          path3: [{ name: 'Ultravision', cost: 700, desc: 'Super Camo Detection visor', apply: (t) => t.canSeeCamo = true }, { name: 'Dark Knight', cost: 2400, desc: 'Teleports, Blades pop Moabs', apply: (t) => { t.damage += 3; t.moabMultiplier = 3; } }]
+        }
+      }
+    };
+
+    // --- 5. Game State ---
+    let cash = 800;
+    let lives = 100;
+    let currentRound = 1;
+    let maxRounds = 40;
+    let gameSpeed = 1;
+    let autoPlay = false;
+    let isWaveActive = false;
+    let isGameOver = false;
+
+    let bloons = [];
+    let towers = [];
+    let projectiles = [];
+    let particles = [];
+    let floatingTexts = [];
+    let waveSpawns = [];
+
+    let selectedTowerKey = null;
+    let inspectedTower = null;
+    let mouse = { x: 0, y: 0 };
+    let coopTimer = 0;
+
+    // Networking State (P2P WebRTC & Dedicated WebSocket LAN)
+    let netMode = 'offline'; // 'offline', 'p2p_host', 'p2p_client', 'ws_host', 'ws_client'
+    let myRole = 'host'; // 'host' or 'client'
+    let myPlayerName = 'Player 1';
+    let peerName = 'Partner';
+    let peerConnected = false;
+    let peerCursor = { x: -100, y: -100, active: false, selectedKey: null };
+    let peerInstance = null;
+    let peerConnection = null;
+    let wsConnection = null;
+    let activeRoomCode = null;
+
+    // --- 6. Controls & Setup ---
+    function buildStoreUI() {
+      const container = document.getElementById('towers-container');
+      container.innerHTML = '';
+      const keys = Object.keys(TOWER_SPECS);
+      keys.forEach((key, index) => {
+        const spec = TOWER_SPECS[key];
+        const btn = document.createElement('button');
+        btn.className = 'tower-btn';
+        btn.id = `btn-tower-${key}`;
+        btn.onclick = () => selectTower(key);
+
+        const hotkey = index === 9 ? '0' : `${index + 1}`;
+        btn.innerHTML = `
+          <span class="hotkey-badge">${hotkey}</span>
+          <div class="tower-title">${spec.icon} ${spec.name}</div>
+          <div class="tower-cost">$${spec.cost}</div>
+        `;
+        container.appendChild(btn);
+      });
+    }
+    buildStoreUI();
+
+    let lastCursorSend = 0;
+    canvas.addEventListener('mousemove', (e) => {
+      const r = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - r.left;
+      mouse.y = e.clientY - r.top;
+
+      // Broadcast cursor and ghost placement to partner (throttled to 30fps)
+      const now = performance.now();
+      if (netMode !== 'offline' && peerConnected && now - lastCursorSend > 33) {
+        lastCursorSend = now;
+        sendNetMessage({
+          type: 'CURSOR_MOVE',
+          x: Math.round(mouse.x),
+          y: Math.round(mouse.y),
+          selectedKey: selectedTowerKey
+        });
+      }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      if (netMode !== 'offline' && peerConnected) {
+        sendNetMessage({ type: 'CURSOR_LEAVE' });
+      }
+    });
+
+    canvas.addEventListener('click', (e) => {
+      if (isGameOver) return;
+      const r = canvas.getBoundingClientRect();
+      const clickX = e.clientX - r.left;
+      const clickY = e.clientY - r.top;
+
+      if (selectedTowerKey) {
+        if (canPlaceTower(clickX, clickY, 22, selectedTowerKey)) {
+          const spec = TOWER_SPECS[selectedTowerKey];
+          if (cash >= spec.cost) {
+            cash -= spec.cost;
+            const ownerName = netMode !== 'offline' ? (myRole === 'host' ? 'P1 (Host)' : 'P2 (Partner)') : 'Player 1';
+            const newT = createTower(selectedTowerKey, clickX, clickY, ownerName);
+            towers.push(newT);
+            playSfx('dart');
+            createFloatingText(clickX, clickY - 20, `-$${spec.cost}`, '#facc15');
+            selectedTowerKey = null;
+            inspectTower(newT);
+            updateUI();
+
+            // Broadcast tower placement to LAN co-op partner
+            if (netMode !== 'offline' && peerConnected) {
+              sendNetMessage({
+                type: 'PLACE_TOWER',
+                towerData: {
+                  id: newT.id,
+                  typeKey: newT.typeKey,
+                  x: newT.x,
+                  y: newT.y,
+                  owner: newT.owner,
+                  totalCost: newT.totalCost
+                },
+                newCash: cash
+              });
+            }
+          }
+        }
+      } else {
+        const clicked = towers.find(t => Math.hypot(t.x - clickX, t.y - clickY) <= 26);
+        inspectTower(clicked || null);
+      }
+    });
+
+    // Keyboard Hotkeys
+    window.addEventListener('keydown', (e) => {
+      const num = parseInt(e.key);
+      const keys = Object.keys(TOWER_SPECS);
+      if (num >= 1 && num <= 9) selectTower(keys[num - 1]);
+      if (e.key === '0') selectTower(keys[9]);
+      if (e.key === ' ') { e.preventDefault(); triggerNextWave(); }
+      if (e.key === 'Tab') { e.preventDefault(); cycleGameSpeed(); }
+      if (e.key === 'Escape') { selectTower(null); inspectTower(null); }
+    });
+
+    function selectTower(key) {
+      if (key && cash < TOWER_SPECS[key].cost) return;
+      selectedTowerKey = (selectedTowerKey === key) ? null : key;
+      inspectTower(null);
+      updateUI();
+    }
+
+    function toggleAutoPlay() {
+      autoPlay = !autoPlay;
+      document.getElementById('auto-knob').classList.toggle('active', autoPlay);
+      if (autoPlay && !isWaveActive && !isGameOver) triggerNextWave();
+    }
+
+    function cycleGameSpeed() {
+      gameSpeed = gameSpeed === 1 ? 2 : (gameSpeed === 2 ? 3 : 1);
+      const btn = document.getElementById('speed-btn');
+      btn.textContent = `${gameSpeed}x`;
+      btn.classList.toggle('turbo', gameSpeed > 1);
+    }
+
+    function canPlaceTower(x, y, r, typeKey) {
+      if (x < r || x > canvas.width - r || y < r || y > canvas.height - r) return false;
+      
+      // Track collision
+      for (const seg of pathSegments) {
+        if (distToSegment({x, y}, seg.p1, seg.p2) < 34 + r) return false;
+      }
+
+      // Water check (Buccaneer MUST be in water; other towers CANNOT be in water!)
+      const normX = (x - POND.x) / (POND.rx - 8);
+      const normY = (y - POND.y) / (POND.ry - 8);
+      const inPond = (normX*normX + normY*normY) < 1.0;
+
+      const isWaterTower = TOWER_SPECS[typeKey].isWaterOnly;
+      if (isWaterTower && !inPond) return false;
+      if (!isWaterTower && inPond) return false;
+
+      // Other towers collision
+      for (const t of towers) {
+        if (Math.hypot(t.x - x, t.y - y) < 40) return false;
+      }
+      return true;
+    }
+
+    function distToSegment(p, v, w) {
+      const l2 = Math.hypot(v.x - w.x, v.y - w.y) ** 2;
+      if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+      let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+    }
+
+    function createTower(typeKey, x, y, owner = 'Player 1') {
+      const s = TOWER_SPECS[typeKey];
+      return {
+        id: Math.random().toString(36).substring(2, 9),
+        typeKey, owner, name: s.name, x, y, angle: 0,
+        range: s.range, fireRate: s.fireRate, projectileSpeed: s.projectileSpeed || 8,
+        damage: s.damage, pierce: s.pierce || 1, splashRadius: s.splashRadius || 0,
+        isExplosive: !!s.isExplosive, isAoePulse: !!s.isAoePulse, isHoming: !!s.isHoming,
+        canPopLead: !!s.canPopLead, canSeeCamo: !!s.canSeeCamo, isBoomerang: !!s.isBoomerang,
+        isSniper: !!s.isSniper, isTack: !!s.isTack, tackCount: 8, color: s.color,
+        totalCost: s.cost, pops: 0, cooldown: 0, targetPriority: 'first',
+        p1Tier: 0, p2Tier: 0, p3Tier: 0
+      };
+    }
+
+    // --- 7. Inspection & 3-Path Upgrades ---
+    function inspectTower(t) {
+      inspectedTower = t;
+      const card = document.getElementById('upgrade-card');
+      if (!t) {
+        card.style.display = 'none';
+        return;
+      }
+      card.style.display = 'block';
+      document.getElementById('inspect-title').textContent = `${t.name} (${t.owner})`;
+      document.getElementById('inspect-pops').textContent = `${t.pops} Pops`;
+      document.getElementById('target-select').value = t.targetPriority;
+
+      const spec = TOWER_SPECS[t.typeKey];
+
+      // Update Paths 1, 2, 3
+      [1, 2, 3].forEach(p => {
+        const upgList = spec.upgrades[`path${p}`];
+        const currentTier = t[`p${p}Tier`];
+        const upg = upgList ? upgList[currentTier] : null;
+        const nameEl = document.getElementById(`p${p}-name`);
+        const costEl = document.getElementById(`p${p}-cost`);
+        const descEl = document.getElementById(`p${p}-desc`);
+        const btn = document.getElementById(`p${p}-btn`);
+
+        if (upg) {
+          nameEl.textContent = upg.name;
+          costEl.textContent = `$${upg.cost}`;
+          descEl.textContent = upg.desc;
+          btn.textContent = `Buy ($${upg.cost})`;
+          btn.disabled = cash < upg.cost;
+        } else {
+          nameEl.textContent = `Path ${p} MAXED`;
+          costEl.textContent = 'MAX';
+          descEl.textContent = 'Max tier achieved';
+          btn.textContent = 'MAXED';
+          btn.disabled = true;
+        }
+      });
+
+      const sellVal = Math.floor(t.totalCost * 0.7);
+      document.getElementById('sell-btn').textContent = `Sell Tower ($${sellVal})`;
+    }
+
+    function buyUpgrade(pathNum, fromNet = false) {
+      if (!inspectedTower) return;
+      const spec = TOWER_SPECS[inspectedTower.typeKey];
+      const tierKey = `p${pathNum}Tier`;
+      const upgList = spec.upgrades[`path${pathNum}`];
+      if (inspectedTower[tierKey] < upgList.length) {
+        const upg = upgList[inspectedTower[tierKey]];
+        if (cash >= upg.cost || fromNet) {
+          if (!fromNet) cash -= upg.cost;
+          inspectedTower.totalCost += upg.cost;
+          upg.apply(inspectedTower);
+          inspectedTower[tierKey]++;
+          playSfx('magic');
+          createFloatingText(inspectedTower.x, inspectedTower.y - 25, `Upgraded!`, '#38bdf8');
+          inspectTower(inspectedTower);
+          updateUI();
+
+          if (!fromNet && netMode !== 'offline' && peerConnected) {
+            sendNetMessage({
+              type: 'UPGRADE_TOWER',
+              towerId: inspectedTower.id,
+              pathNum: pathNum,
+              newCash: cash
+            });
+          }
+        }
+      }
+    }
+
+    function sellInspectedTower(fromNet = false) {
+      if (!inspectedTower) return;
+      const tId = inspectedTower.id;
+      const val = Math.floor(inspectedTower.totalCost * 0.7);
+      if (!fromNet) cash += val;
+      createFloatingText(inspectedTower.x, inspectedTower.y - 20, `+$${val}`, '#22c55e');
+      towers = towers.filter(t => t.id !== tId);
+      inspectTower(null);
+      updateUI();
+
+      if (!fromNet && netMode !== 'offline' && peerConnected) {
+        sendNetMessage({
+          type: 'SELL_TOWER',
+          towerId: tId,
+          newCash: cash
+        });
+      }
+    }
+
+    function setTargetPriority(val, fromNet = false) {
+      if (inspectedTower) {
+        inspectedTower.targetPriority = val;
+        if (!fromNet && netMode !== 'offline' && peerConnected) {
+          sendNetMessage({
+            type: 'SET_PRIORITY',
+            towerId: inspectedTower.id,
+            priority: val
+          });
+        }
+      }
+    }
+
+    // --- 8. Wave Spawner System (40 Strategic Rounds) ---
+    function generateWave(r) {
+      const spawns = [];
+      let d = 0;
+
+      if (r <= 3) {
+        for (let i = 0; i < 15 + r * 6; i++) spawns.push({ type: 'red', delay: d += 0.4 });
+      } else if (r <= 6) {
+        for (let i = 0; i < 15; i++) spawns.push({ type: 'red', delay: d += 0.3 });
+        for (let i = 0; i < 15 + r * 2; i++) spawns.push({ type: 'blue', delay: d += 0.32 });
+      } else if (r <= 10) {
+        for (let i = 0; i < 15; i++) spawns.push({ type: 'blue', delay: d += 0.25 });
+        for (let i = 0; i < 15; i++) spawns.push({ type: 'green', delay: d += 0.28 });
+        for (let i = 0; i < 10; i++) spawns.push({ type: 'yellow', delay: d += 0.35 });
+      } else if (r <= 15) {
+        for (let i = 0; i < 20; i++) spawns.push({ type: 'yellow', delay: d += 0.2 });
+        for (let i = 0; i < 15; i++) spawns.push({ type: 'pink', delay: d += 0.22 });
+        for (let i = 0; i < 10; i++) spawns.push({ type: 'black', delay: d += 0.3 });
+        for (let i = 0; i < 6; i++) spawns.push({ type: 'lead', delay: d += 0.45 });
+      } else if (r <= 22) {
+        for (let i = 0; i < 20; i++) spawns.push({ type: 'white', delay: d += 0.2 });
+        for (let i = 0; i < 15; i++) spawns.push({ type: 'purple', delay: d += 0.25 });
+        for (let i = 0; i < 12; i++) spawns.push({ type: 'lead', delay: d += 0.3 });
+        for (let i = 0; i < 8; i++) spawns.push({ type: 'zebra', delay: d += 0.35 });
+      } else if (r <= 28) {
+        for (let i = 0; i < 15; i++) spawns.push({ type: 'zebra', delay: d += 0.25 });
+        for (let i = 0; i < 12; i++) spawns.push({ type: 'rainbow', delay: d += 0.3 });
+        for (let i = 0; i < 8; i++) spawns.push({ type: 'ceramic', delay: d += 0.5 });
+      } else if (r <= 34) {
+        for (let i = 0; i < 20; i++) spawns.push({ type: 'ceramic', delay: d += 0.3 });
+        spawns.push({ type: 'moab', delay: d += 1.2 });
+        spawns.push({ type: 'moab', delay: d += 2.0 });
+      } else if (r <= 39) {
+        for (let i = 0; i < 25; i++) spawns.push({ type: 'ceramic', delay: d += 0.25 });
+        spawns.push({ type: 'moab', delay: d += 1.0 });
+        spawns.push({ type: 'moab', delay: d += 1.2 });
+        spawns.push({ type: 'bfb', delay: d += 2.5 });
+      } else {
+        // Round 40: Grand Finale ZOMG Titan Boss!
+        for (let i = 0; i < 30; i++) spawns.push({ type: 'ceramic', delay: d += 0.2 });
+        spawns.push({ type: 'bfb', delay: d += 1.0 });
+        spawns.push({ type: 'bfb', delay: d += 2.0 });
+        spawns.push({ type: 'zomg', delay: d += 3.5 });
+      }
+      return spawns;
+    }
+
+    function triggerNextWave(fromNet = false) {
+      if (isWaveActive || isGameOver) return;
+      isWaveActive = true;
+      waveSpawns = generateWave(currentRound);
+      document.getElementById('wave-btn').disabled = true;
+      document.getElementById('wave-btn').textContent = 'Defending...';
+      updateWavePreview();
+
+      if (!fromNet && netMode !== 'offline' && peerConnected) {
+        sendNetMessage({
+          type: 'START_WAVE',
+          round: currentRound
+        });
+      }
+    }
+
+    function updateWavePreview() {
+      const container = document.getElementById('wave-chips');
+      container.innerHTML = '';
+      const spawns = generateWave(currentRound);
+      const uniqueTypes = [...new Set(spawns.map(s => s.type))];
+      for (const t of uniqueTypes) {
+        const b = BLOON_TYPES[t];
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.style.background = b.color;
+        if (b.isMoab) chip.style.border = '1px solid #fff';
+        container.appendChild(chip);
+      }
+    }
+
+    // --- 9. Game Loop & Simulation ---
+    let lastTime = performance.now();
+    function gameLoop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.1) * gameSpeed;
+      lastTime = now;
+
+      update(dt);
+      render();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function update(dt) {
+      if (isGameOver) return;
+
+      // 1. Wave Spawning
+      if (isWaveActive && waveSpawns.length > 0) {
+        for (let i = waveSpawns.length - 1; i >= 0; i--) {
+          waveSpawns[i].delay -= dt;
+          if (waveSpawns[i].delay <= 0) {
+            spawnBloon(waveSpawns[i].type, 0);
+            waveSpawns.splice(i, 1);
+          }
+        }
+      }
+
+      // Wave Cleared
+      if (isWaveActive && waveSpawns.length === 0 && bloons.length === 0) {
+        isWaveActive = false;
+        let clearBonus = 120 + currentRound * 20;
+        
+        // Merchantman income bonus from Buccaneers
+        for (const t of towers) {
+          if (t.incomeBonus) clearBonus += t.incomeBonus;
+        }
+
+        cash += clearBonus;
+        createFloatingText(canvas.width / 2, 70, `Round Cleared! +$${clearBonus}`, '#22c55e', 22);
+        currentRound++;
+
+        if (currentRound > maxRounds) {
+          showVictory();
+          return;
+        }
+
+        document.getElementById('wave-btn').disabled = false;
+        document.getElementById('wave-btn').textContent = '▶ Start Round';
+        updateUI();
+        updateWavePreview();
+
+        if (autoPlay) {
+          setTimeout(() => {
+            if (autoPlay && !isWaveActive && !isGameOver) triggerNextWave();
+          }, 600 / gameSpeed);
+        }
+      }
+
+      // 2. Simulated Co-Op Partner action (ONLY in single-player offline mode)
+      if (netMode === 'offline') {
+        coopTimer += dt;
+        if (coopTimer > 15 && towers.length < 5 && currentRound >= 3) {
+          coopTimer = -9999;
+          const p2T = createTower('ninja', 230, 240, 'Player 2 (Bot)');
+          towers.push(p2T);
+          createFloatingText(230, 220, `P2 Deployed Ninja!`, '#ec4899');
+          playSfx('dart');
+        }
+      }
+
+      // 3. Bloons Movement & Status
+      for (let i = bloons.length - 1; i >= 0; i--) {
+        const b = bloons[i];
+
+        if (b.freezeTimer > 0) {
+          b.freezeTimer -= dt;
+        } else {
+          const effSpeed = b.permafrostSlow ? b.speed * 0.6 : b.speed;
+          b.distance += effSpeed * 85 * dt;
+        }
+
+        const pos = getPositionOnPath(b.distance);
+        b.x = pos.x;
+        b.y = pos.y;
+
+        // Leaked bloon reached exit
+        if (b.distance >= totalPathLength) {
+          const dmg = b.isZomg ? 250 : (b.isBfb ? 100 : (b.isMoab ? 40 : (b.isCeramic ? 8 : 1)));
+          lives -= dmg;
+          bloons.splice(i, 1);
+          createFloatingText(b.x - 20, b.y, `-${dmg} ❤️`, '#f43f5e', 18);
+
+          if (lives <= 0) {
+            lives = 0;
+            triggerGameOver();
+            return;
+          }
+          updateUI();
+        }
+      }
+
+      // 4. Tower Targeting & Weapon Aim with Predictive Target Leading!
+      for (const t of towers) {
+        t.cooldown -= dt;
+        const target = acquireTarget(t);
+        if (target) {
+          // Calculate where the bloon WILL BE by the time the projectile arrives
+          const leadPos = calculateLeadPosition(t, target);
+          t.angle = Math.atan2(leadPos.y - t.y, leadPos.x - t.x);
+
+          if (t.cooldown <= 0) {
+            fireTower(t, target, leadPos);
+            t.cooldown = 1 / t.fireRate;
+          }
+        }
+      }
+
+      // 5. Projectiles Simulation with Magnetic Aim Assist
+      for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.life -= dt;
+
+        // Boomerang Return Arc Math
+        if (p.isBoomerang) {
+          p.theta = (p.theta || 0) + 7 * dt;
+          p.x = p.originX + Math.cos(p.angle) * Math.sin(p.theta) * 110 + Math.cos(p.theta) * 35;
+          p.y = p.originY + Math.sin(p.angle) * Math.sin(p.theta) * 110 + Math.sin(p.theta) * 35;
+        } else {
+          // Predictive / Smart Steering Assist:
+          // Gently steers projectiles towards target when close to prevent near-misses
+          if (p.target && bloons.includes(p.target)) {
+            const dx = p.target.x - p.x;
+            const dy = p.target.y - p.y;
+            const distToTarget = Math.hypot(dx, dy);
+
+            if (p.isHoming || distToTarget < 75) {
+              const desiredAngle = Math.atan2(dy, dx);
+              const curAngle = Math.atan2(p.vy, p.vx);
+              let diff = desiredAngle - curAngle;
+              while (diff < -Math.PI) diff += Math.PI * 2;
+              while (diff > Math.PI) diff -= Math.PI * 2;
+
+              const steerPower = p.isHoming ? 0.45 : 0.15; // Smooth assist
+              const newAngle = curAngle + diff * steerPower;
+              const spd = p.speed || 380;
+              p.vx = Math.cos(newAngle) * spd;
+              p.vy = Math.sin(newAngle) * spd;
+            }
+          }
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+        }
+
+        // Collision Check (With generous hit detection margin)
+        for (let j = bloons.length - 1; j >= 0; j--) {
+          const b = bloons[j];
+          if (p.hitBloonIds.has(b.id)) continue;
+
+          const dist = Math.hypot(p.x - b.x, p.y - b.y);
+          if (dist <= p.radius + b.radius + 3) {
+            p.hitBloonIds.add(b.id);
+            damageBloon(b, p.damage, p.tower, p.isExplosive);
+
+            if (p.isExplosive) {
+              playSfx('bomb');
+              spawnExplosion(p.x, p.y, p.splashRadius);
+              for (const other of bloons) {
+                if (other.id !== b.id && Math.hypot(p.x - other.x, p.y - other.y) <= p.splashRadius) {
+                  damageBloon(other, p.damage, p.tower, true);
+                }
+              }
+              p.pierce = 0;
+              break;
+            }
+
+            p.pierce--;
+            if (p.pierce <= 0) break;
+          }
+        }
+
+        if (p.pierce <= 0 || p.life <= 0) {
+          projectiles.splice(i, 1);
+        }
+      }
+
+      // 6. Particles & Floating Text
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.x += pt.vx * dt;
+        pt.y += pt.vy * dt;
+        pt.life -= dt;
+        if (pt.life <= 0) particles.splice(i, 1);
+      }
+
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y -= 25 * dt;
+        ft.life -= dt;
+        if (ft.life <= 0) floatingTexts.splice(i, 1);
+      }
+    }
+
+    function spawnBloon(typeKey, startDist = 0) {
+      const spec = BLOON_TYPES[typeKey];
+      bloons.push({
+        id: Math.random().toString(36).substring(2, 9),
+        typeKey, distance: startDist, x: -50, y: -50,
+        hp: spec.hp, maxHp: spec.hp, speed: spec.speed, radius: spec.radius,
+        color: spec.color, isMoab: !!spec.isMoab, isBfb: !!spec.isBfb, isZomg: !!spec.isZomg,
+        isCeramic: !!spec.isCeramic, isLead: !!spec.isLead, isPurple: !!spec.isImmuneEnergy,
+        isImmuneExplosion: !!spec.isImmuneExplosion, isImmuneFreeze: !!spec.isImmuneFreeze,
+        freezeTimer: 0, permafrostSlow: false
+      });
+    }
+
+    function damageBloon(b, amount, tower, isExplosive = false) {
+      if (b.isImmuneExplosion && isExplosive) return;
+      if (b.isImmuneFreeze && tower.isAoePulse) return;
+      if (b.isLead && !tower.canPopLead && !isExplosive) {
+        createFloatingText(b.x, b.y - 15, `Immune!`, '#94a3b8', 11);
+        return;
+      }
+      if (b.isPurple && tower.isLaser) {
+        createFloatingText(b.x, b.y - 15, `Purple Resist!`, '#c084fc', 11);
+        return;
+      }
+
+      let effDmg = amount;
+      if (b.isMoab && tower.moabMultiplier) effDmg *= tower.moabMultiplier;
+
+      b.hp -= effDmg;
+      tower.pops += effDmg;
+      spawnPopParticles(b.x, b.y, b.color);
+      playSfx('pop');
+
+      if (b.hp <= 0) {
+        cash += BLOON_TYPES[b.typeKey].reward;
+        updateUI();
+
+        const nextType = BLOON_TYPES[b.typeKey].next;
+        const curDist = b.distance;
+        const children = BLOON_TYPES[b.typeKey].childrenCount || 1;
+
+        bloons = bloons.filter(item => item.id !== b.id);
+
+        if (nextType) {
+          for (let c = 0; c < children; c++) {
+            spawnBloon(nextType, curDist - c * 12);
+          }
+        }
+      }
+    }
+
+    function acquireTarget(t) {
+      const inRange = bloons.filter(b => {
+        if (t.range < 5000 && Math.hypot(b.x - t.x, b.y - t.y) > t.range) return false;
+        return true;
+      });
+      if (inRange.length === 0) return null;
+
+      if (t.targetPriority === 'first') return inRange.reduce((p, c) => c.distance > p.distance ? c : p);
+      if (t.targetPriority === 'last') return inRange.reduce((p, c) => c.distance < p.distance ? c : p);
+      if (t.targetPriority === 'strong') return inRange.reduce((p, c) => c.hp > p.hp ? c : p);
+      if (t.targetPriority === 'close') {
+        return inRange.reduce((p, c) => Math.hypot(c.x - t.x, c.y - t.y) < Math.hypot(p.x - t.x, p.y - t.y) ? c : p);
+      }
+      return inRange[0];
+    }
+
+    // Predictive Target Leading Algorithm (Eliminates projectile misses!)
+    function calculateLeadPosition(t, target) {
+      if (t.isSniper || t.isAoePulse || t.isTack) {
+        return { x: target.x, y: target.y };
+      }
+
+      const projSpeed = (t.projectileSpeed || 8) * 40;
+      const dist = Math.hypot(target.x - t.x, target.y - t.y);
+      const timeToHit = dist / projSpeed;
+
+      const targetSpeed = (target.freezeTimer > 0 ? 0 : (target.permafrostSlow ? target.speed * 0.6 : target.speed)) * 85;
+      const futureDistance = Math.min(totalPathLength, target.distance + targetSpeed * timeToHit);
+
+      // Refinement pass for curved tracks
+      const futurePos1 = getPositionOnPath(futureDistance);
+      const dist2 = Math.hypot(futurePos1.x - t.x, futurePos1.y - t.y);
+      const timeToHit2 = dist2 / projSpeed;
+      const finalFutureDist = Math.min(totalPathLength, target.distance + targetSpeed * timeToHit2);
+
+      return getPositionOnPath(finalFutureDist);
+    }
+
+    function fireTower(t, target, leadPos) {
+      // 1. Tack Shooter
+      if (t.isTack) {
+        playSfx('dart');
+        const count = t.tackCount || 8;
+        for (let i = 0; i < count; i++) {
+          const ang = (Math.PI * 2 / count) * i;
+          projectiles.push({
+            x: t.x, y: t.y, vx: Math.cos(ang) * 320, vy: Math.sin(ang) * 320,
+            radius: 4, life: 0.3, damage: t.damage, pierce: t.pierce, tower: t, hitBloonIds: new Set()
+          });
+        }
+        return;
+      }
+
+      // 2. Ice Monkey
+      if (t.isAoePulse) {
+        playSfx('freeze');
+        spawnFreezeParticles(t.x, t.y, t.range);
+        for (const b of bloons) {
+          if (Math.hypot(b.x - t.x, b.y - t.y) <= t.range) {
+            if (!b.isImmuneFreeze && !b.isMoab) {
+              b.freezeTimer = t.freezeDuration || 1.3;
+              if (t.permafrost) b.permafrostSlow = true;
+            }
+            damageBloon(b, t.damage, t, false);
+          }
+        }
+        return;
+      }
+
+      // 3. Sniper Monkey (Instant Hitscan!)
+      if (t.isSniper) {
+        playSfx('sniper');
+        damageBloon(target, t.damage, t, false);
+        // Draw laser sniper beam tracer
+        particles.push({
+          x: t.x, y: t.y, targetX: target.x, targetY: target.y,
+          life: 0.12, isBeam: true, color: '#facc15'
+        });
+        return;
+      }
+
+      // 4. Boomerang Monkey
+      if (t.isBoomerang) {
+        playSfx('dart');
+        projectiles.push({
+          x: t.x, y: t.y, originX: t.x, originY: t.y, angle: t.angle,
+          radius: 6, life: 1.0, damage: t.damage, pierce: t.pierce,
+          isBoomerang: true, tower: t, hitBloonIds: new Set()
+        });
+        return;
+      }
+
+      // 5. Standard / Wizard / Super / Bomb / Buccaneer Projectile
+      const spd = t.projectileSpeed * 40;
+      projectiles.push({
+        x: t.x, y: t.y,
+        vx: Math.cos(t.angle) * spd, vy: Math.sin(t.angle) * spd, speed: spd,
+        radius: t.isExplosive ? 7 : (t.isNinja ? 5 : 4),
+        life: 2.2, damage: t.damage, pierce: t.pierce, splashRadius: t.splashRadius,
+        isExplosive: t.isExplosive, isHoming: t.isHoming, isLaser: t.isLaser,
+        target: target, tower: t, hitBloonIds: new Set()
+      });
+
+      playSfx(t.typeKey === 'wizard' ? 'magic' : (t.isExplosive ? 'dart' : 'dart'));
+    }
+
+    // --- 10. VFX Generators ---
+    function spawnPopParticles(x, y, color) {
+      for (let i = 0; i < 6; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 40 + Math.random() * 80;
+        particles.push({ x, y, vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd, life: 0.3, color, size: 3 + Math.random()*3 });
+      }
+    }
+
+    function spawnExplosion(x, y, r) {
+      for (let i = 0; i < 20; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 110;
+        particles.push({ x, y, vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd, life: 0.4, color: i%2===0?'#f97316':'#facc15', size: 5 + Math.random()*6 });
+      }
+    }
+
+    function spawnFreezeParticles(x, y, r) {
+      for (let i = 0; i < 24; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = Math.random() * r;
+        particles.push({ x: x + Math.cos(ang)*dist, y: y + Math.sin(ang)*dist, vx: 0, vy: -20, life: 0.45, color: '#e0f2fe', size: 4 });
+      }
+    }
+
+    function createFloatingText(x, y, text, color = '#fff', size = 13) {
+      floatingTexts.push({ x, y, text, color, size, life: 0.85 });
+    }
+
+    // --- 11. Deluxe Canvas Renderer ---
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Background Grass with Checkerboard
+      ctx.fillStyle = '#15803d';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(22, 163, 74, 0.45)';
+      for (let x = 0; x < canvas.width; x += 48) {
+        for (let y = 0; y < canvas.height; y += 48) {
+          if ((x / 48 + y / 48) % 2 === 0) ctx.fillRect(x, y, 48, 48);
+        }
+      }
+
+      // 2. Lake Pond (With Water Caustics)
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.ellipse(POND.x, POND.y, POND.rx, POND.ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      // Water Highlights
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(POND.x - 20, POND.y - 15, 25, 0, Math.PI);
+      ctx.stroke();
+
+      // 3. Dirt Winding Road
+      ctx.lineWidth = 50;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#713f12';
+      ctx.beginPath();
+      ctx.moveTo(WAYPOINTS[0].x, WAYPOINTS[0].y);
+      for (let i = 1; i < WAYPOINTS.length; i++) ctx.lineTo(WAYPOINTS[i].x, WAYPOINTS[i].y);
+      ctx.stroke();
+
+      ctx.lineWidth = 40;
+      ctx.strokeStyle = '#ca8a04';
+      ctx.stroke();
+
+      // Wooden Bridges Planks
+      ctx.fillStyle = '#854d0e';
+      for (let dist = 30; dist < totalPathLength; dist += 60) {
+        const p = getPositionOnPath(dist);
+        ctx.fillRect(p.x - 6, p.y - 14, 12, 28);
+      }
+
+      // 4. Scenery Trees
+      for (const tree of TREES) {
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.beginPath();
+        ctx.arc(tree.x + 6, tree.y + 8, tree.r, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#166534';
+        ctx.beginPath();
+        ctx.arc(tree.x, tree.y, tree.r, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(tree.x - 4, tree.y - 4, tree.r * 0.65, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // 5. Range Preview Indicator
+      if (selectedTowerKey) {
+        const spec = TOWER_SPECS[selectedTowerKey];
+        const valid = canPlaceTower(mouse.x, mouse.y, 22, selectedTowerKey);
+
+        ctx.fillStyle = valid ? 'rgba(56, 189, 248, 0.25)' : 'rgba(239, 68, 68, 0.35)';
+        ctx.strokeStyle = valid ? '#38bdf8' : '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, Math.min(spec.range, 350), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Ghost Tower Icon
+        ctx.fillStyle = valid ? spec.color : '#ef4444';
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 18, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (inspectedTower) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(inspectedTower.x, inspectedTower.y, Math.min(inspectedTower.range, 400), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // 6. Bloons Rendering (High Quality Procedural Shading)
+      for (const b of bloons) {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+
+        if (b.isMoab) {
+          // MOAB, BFB, ZOMG Blimps
+          ctx.fillStyle = b.isZomg ? '#16a34a' : (b.isBfb ? '#dc2626' : '#0284c7');
+          ctx.beginPath();
+          ctx.ellipse(0, 0, b.radius * 1.6, b.radius * 0.95, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          // Hazard / Skull Stripes
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(-10, -b.radius * 0.9, 20, b.radius * 1.8);
+
+          if (b.isZomg) {
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('💀', 0, 5);
+          }
+
+          // Blimp Health bar
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(-30, -28, 60, 6);
+          ctx.fillStyle = '#10b981';
+          ctx.fillRect(-30, -28, 60 * (b.hp / b.maxHp), 6);
+        } else {
+          // Standard Bloon with Gloss Highlights
+          ctx.fillStyle = b.freezeTimer > 0 ? '#93c5fd' : b.color;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, b.radius, b.radius * 1.22, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Gloss Specular Highlight
+          ctx.fillStyle = 'rgba(255,255,255,0.45)';
+          ctx.beginPath();
+          ctx.ellipse(-b.radius * 0.35, -b.radius * 0.4, b.radius * 0.35, b.radius * 0.2, -0.5, 0, Math.PI*2);
+          ctx.fill();
+
+          // Knot
+          ctx.fillStyle = b.color;
+          ctx.beginPath();
+          ctx.moveTo(-3, b.radius * 1.22);
+          ctx.lineTo(3, b.radius * 1.22);
+          ctx.lineTo(0, b.radius * 1.22 + 4);
+          ctx.fill();
+
+          // Armor Badges
+          if (b.isCeramic) {
+            ctx.fillStyle = '#fef08a';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`🛡️${b.hp}`, 0, 2);
+          } else if (b.isLead) {
+            ctx.fillStyle = '#334155';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`⚙️`, 0, 2);
+          } else if (b.isPurple) {
+            ctx.fillStyle = '#fdf4ff';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`⚡`, 0, 2);
+          }
+        }
+        ctx.restore();
+      }
+
+      // 7. Towers Rendering (Detailed Animated Procedural Sprites)
+      for (const t of towers) {
+        ctx.save();
+        ctx.translate(t.x, t.y);
+
+        if (t.typeKey === 'buccaneer') {
+          // Buccaneer Wooden War Galleon Ship
+          ctx.fillStyle = '#78350f';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 22, 12, t.angle, 0, Math.PI*2);
+          ctx.fill();
+          ctx.strokeStyle = '#451a03';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // White Cloth Sail
+          ctx.rotate(t.angle);
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(-3, -16, 6, 32);
+          ctx.fillStyle = '#dc2626';
+          ctx.fillText('🏴‍☠️', 0, 0);
+        } else {
+          // Soft Contact Ground Shadow (Directly under character feet)
+          ctx.save();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.4)';
+          ctx.beginPath();
+          ctx.ellipse(0, 5, 17, 9, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          // Selection Ring ONLY when actively inspected/selected
+          if (inspectedTower && inspectedTower.id === t.id) {
+            ctx.save();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(0, 0, 24, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Aim angle rotation for body/weapon
+          ctx.rotate(t.angle);
+
+          const now = performance.now() * 0.003;
+          const isDark = (t.typeKey === 'dart' && (t.p2Tier >= 2 || t.p3Tier >= 2)) || (t.typeKey === 'super' && t.p3Tier >= 2);
+
+          if (t.typeKey === 'dart') {
+            // ==========================================================
+            // AUTHENTIC 3D-STYLED DART MONKEY (BTD ANATOMY & SILHOUETTE)
+            // ==========================================================
+            const furDark = isDark ? '#0f172a' : '#451a03';
+            const furMain = isDark ? '#1e1b4b' : '#78350f';
+            const furLight = isDark ? '#312e81' : '#92400e';
+            const skinTone = isDark ? '#334155' : '#fed7aa';
+            const skinShadow = isDark ? '#1e293b' : '#fbcfe8';
+
+            // 1. Curled Monkey Tail with clean outline
+            ctx.save();
+            const tailWave = Math.sin(now * 2.5) * 2.5;
+            ctx.strokeStyle = furDark;
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-7, 2);
+            ctx.bezierCurveTo(-14, -5 + tailWave, -22, 2 + tailWave, -18, -14 + tailWave);
+            ctx.stroke();
+
+            ctx.strokeStyle = furMain;
+            ctx.lineWidth = 3.2;
+            ctx.beginPath();
+            ctx.moveTo(-7, 2);
+            ctx.bezierCurveTo(-14, -5 + tailWave, -22, 2 + tailWave, -18, -14 + tailWave);
+            ctx.stroke();
+            ctx.restore();
+
+            // 2. Protruding Round Ears (Drawn behind head, sticking out on sides)
+            ctx.save();
+            for (const earY of [-10.5, 10.5]) {
+              // Ear outer rim
+              ctx.fillStyle = furDark;
+              ctx.beginPath();
+              ctx.arc(-2, earY, 5.5, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.fillStyle = furMain;
+              ctx.beginPath();
+              ctx.arc(-2, earY, 4.5, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Peach inner ear cup
+              ctx.fillStyle = skinTone;
+              ctx.beginPath();
+              ctx.arc(-1.5, earY, 2.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+
+            // 3. Lower Body & Planted Feet
+            ctx.save();
+            // Feet / paws on ground
+            ctx.fillStyle = furDark;
+            ctx.beginPath();
+            ctx.ellipse(-4, -10, 4.5, 3.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(-4, 10, 4.5, 3.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = skinTone;
+            ctx.beginPath();
+            ctx.ellipse(-2.5, -10, 3, 2.2, 0, 0, Math.PI * 2);
+            ctx.ellipse(-2.5, 10, 3, 2.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Torso (Slightly behind the head)
+            const torsoGrad = ctx.createRadialGradient(-3, 0, 1, -2, 0, 10);
+            torsoGrad.addColorStop(0, furLight);
+            torsoGrad.addColorStop(0.8, furMain);
+            torsoGrad.addColorStop(1, furDark);
+
+            ctx.fillStyle = torsoGrad;
+            ctx.beginPath();
+            ctx.ellipse(-3, 0, 8.5, 7.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = furDark;
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            ctx.restore();
+
+            // 4. Head (Compact, forward, well-proportioned 3D sphere)
+            ctx.save();
+            const headGrad = ctx.createRadialGradient(2, -2, 1, 1, 0, 10);
+            headGrad.addColorStop(0, furLight);
+            headGrad.addColorStop(0.7, furMain);
+            headGrad.addColorStop(1, furDark);
+
+            ctx.fillStyle = headGrad;
+            ctx.beginPath();
+            ctx.arc(1, 0, 9.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = furDark;
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
+
+            // 5. Headband / Hood Details
+            if (isDark) {
+              // Dark Assassin Cowl / Hood
+              ctx.fillStyle = '#0f172a';
+              ctx.beginPath();
+              ctx.moveTo(-6, -9);
+              ctx.lineTo(6, -7);
+              ctx.lineTo(10, 0);
+              ctx.lineTo(6, 7);
+              ctx.lineTo(-6, 9);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = '#6366f1';
+              ctx.lineWidth = 1.2;
+              ctx.stroke();
+
+              // Glowing Purple Visor Eyes
+              ctx.fillStyle = '#c084fc';
+              ctx.shadowColor = '#a855f7';
+              ctx.shadowBlur = 6;
+              ctx.beginPath();
+              ctx.ellipse(4.5, -3, 2.5, 1.6, 0.1, 0, Math.PI * 2);
+              ctx.ellipse(4.5, 3, 2.5, 1.6, -0.1, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.shadowBlur = 0;
+            } else {
+              // Classic Red Ninja/Athletic Headband across forehead
+              ctx.fillStyle = '#b91c1c'; // Dark red border
+              ctx.beginPath();
+              ctx.ellipse(-1, 0, 3.8, 9.8, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.fillStyle = '#ef4444'; // Vibrant red band
+              ctx.beginPath();
+              ctx.ellipse(-1, 0, 2.5, 9.5, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Fluttering Headband Ribbon Knot & Tails (trailing backwards)
+              const wave1 = Math.sin(now * 3.5) * 2;
+              const wave2 = Math.cos(now * 3.5) * 2;
+              ctx.fillStyle = '#dc2626';
+              ctx.beginPath();
+              ctx.moveTo(-3, 0);
+              ctx.quadraticCurveTo(-9, -4 + wave1, -15, -2 + wave1);
+              ctx.lineTo(-15, 1 + wave1);
+              ctx.quadraticCurveTo(-9, -1 + wave1, -3, 1);
+              ctx.fill();
+
+              ctx.beginPath();
+              ctx.moveTo(-3, 1);
+              ctx.quadraticCurveTo(-8, 3 + wave2, -14, 5 + wave2);
+              ctx.lineTo(-14, 8 + wave2);
+              ctx.quadraticCurveTo(-8, 5 + wave2, -3, 2);
+              ctx.fill();
+
+              // Peach Muzzle / Snout (Positioned on the front face of monkey)
+              ctx.fillStyle = skinTone;
+              ctx.beginPath();
+              ctx.ellipse(5, 0, 4.8, 4.2, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#d97706';
+              ctx.lineWidth = 0.8;
+              ctx.stroke();
+
+              // Smiling mouth & cute nose
+              ctx.fillStyle = '#78350f';
+              ctx.beginPath();
+              ctx.arc(7.2, 0, 1.2, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.strokeStyle = '#78350f';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.arc(6.2, 0, 1.6, 0, Math.PI);
+              ctx.stroke();
+
+              // Expressive Cartoon Eyes
+              ctx.fillStyle = '#0f172a';
+              ctx.beginPath();
+              ctx.arc(3.8, -2.8, 2.1, 0, Math.PI * 2);
+              ctx.arc(3.8, 2.8, 2.1, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Bright Specular Eye Glint
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(4.4, -3.3, 0.8, 0, Math.PI * 2);
+              ctx.arc(4.4, 2.3, 0.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+
+            // 6. Arms & Weapons (Aiming forward in throw pose)
+            ctx.save();
+            // Left Support Arm
+            ctx.fillStyle = furDark;
+            ctx.beginPath();
+            ctx.ellipse(0, -6.5, 4, 2.8, -0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = skinTone;
+            ctx.beginPath();
+            ctx.arc(2.5, -8, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (isDark) {
+              // Tactical Crossbow
+              ctx.fillStyle = '#334155';
+              ctx.fillRect(5, 2, 13, 3.5);
+              ctx.strokeStyle = '#64748b';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(11, -7); ctx.lineTo(15, 3.5); ctx.lineTo(11, 14);
+              ctx.stroke();
+
+              // Glowing Crossbow Bolt
+              ctx.fillStyle = '#c084fc';
+              ctx.fillRect(8, 3, 14, 2);
+              ctx.fillStyle = '#a855f7';
+              ctx.beginPath();
+              ctx.moveTo(22, 2); ctx.lineTo(26, 4); ctx.lineTo(22, 6);
+              ctx.fill();
+            } else {
+              // Right Arm holding dart forward
+              ctx.fillStyle = furDark;
+              ctx.beginPath();
+              ctx.ellipse(3, 5, 4.5, 2.6, 0.3, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Hand clasping dart
+              ctx.fillStyle = skinTone;
+              ctx.beginPath();
+              ctx.arc(7.5, 5.5, 2.5, 0, Math.PI * 2);
+              ctx.fill();
+
+              // High-Definition Wooden Dart
+              // Wooden Shaft
+              const dartGrad = ctx.createLinearGradient(4, 0, 18, 0);
+              dartGrad.addColorStop(0, '#78350f');
+              dartGrad.addColorStop(0.5, '#b45309');
+              dartGrad.addColorStop(1, '#451a03');
+              ctx.fillStyle = dartGrad;
+              ctx.fillRect(4, 4.2, 15, 2.6);
+
+              // Tri-feather Red Fletching at back
+              ctx.fillStyle = '#dc2626';
+              ctx.beginPath();
+              ctx.moveTo(4, 1.5);
+              ctx.lineTo(9, 5.5);
+              ctx.lineTo(4, 9.5);
+              ctx.closePath();
+              ctx.fill();
+
+              // Sharp Metallic Silver Arrowhead
+              const tipGrad = ctx.createLinearGradient(19, 0, 27, 0);
+              tipGrad.addColorStop(0, '#94a3b8');
+              tipGrad.addColorStop(0.4, '#f8fafc');
+              tipGrad.addColorStop(1, '#475569');
+              ctx.fillStyle = tipGrad;
+              ctx.beginPath();
+              ctx.moveTo(19, 2.2);
+              ctx.lineTo(27, 5.5);
+              ctx.lineTo(19, 8.8);
+              ctx.closePath();
+              ctx.fill();
+            }
+            ctx.restore();
+
+          } else if (t.typeKey === 'bomb') {
+            // ==========================================
+            // STANDALONE 3D CANNON TURRET
+            // ==========================================
+            // Turret Base Mount
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.arc(0, 0, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Heavy Steel Cannon Barrel
+            const cannonGrad = ctx.createLinearGradient(0, -8, 0, 8);
+            cannonGrad.addColorStop(0, '#64748b');
+            cannonGrad.addColorStop(0.5, '#334155');
+            cannonGrad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = cannonGrad;
+            ctx.fillRect(0, -7, 24, 14);
+
+            // Muzzle Reinforcing Collar
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(22, -8.5, 4, 17);
+
+            // Deep Muzzle Bore
+            ctx.fillStyle = '#020617';
+            ctx.beginPath();
+            ctx.ellipse(26, 0, 2, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+          } else if (t.typeKey === 'tack') {
+            // ==========================================
+            // STANDALONE POLISHED TACK DOME
+            // ==========================================
+            const domeGrad = ctx.createRadialGradient(-3, -3, 2, 0, 0, 16);
+            domeGrad.addColorStop(0, '#fde047');
+            domeGrad.addColorStop(0.7, '#ea580c');
+            domeGrad.addColorStop(1, '#7c2d12');
+            ctx.fillStyle = domeGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, 16, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#431407';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // 8 Steel Nozzles
+            for (let i = 0; i < 8; i++) {
+              const a = (Math.PI * 2 / 8) * i;
+              ctx.fillStyle = '#94a3b8';
+              ctx.fillRect(Math.cos(a)*13 - 2.5, Math.sin(a)*13 - 2.5, 5, 5);
+            }
+            // Warning Beacon Center
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(0, 0, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+          } else if (t.typeKey === 'ice') {
+            // ==========================================
+            // STANDALONE FROST YETI MONKEY
+            // ==========================================
+            const iceGrad = ctx.createRadialGradient(-3, -3, 2, 0, 0, 16);
+            iceGrad.addColorStop(0, '#f0f9ff');
+            iceGrad.addColorStop(0.5, '#38bdf8');
+            iceGrad.addColorStop(1, '#0284c7');
+            ctx.fillStyle = iceGrad;
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const a = (Math.PI * 2 / 6) * i;
+              const r = i % 2 === 0 ? 16 : 11;
+              ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#e0f2fe';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Glowing Ice Eyes
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(4, -3, 2, 0, Math.PI * 2);
+            ctx.arc(4, 3, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+          } else if (t.typeKey === 'ninja') {
+            // ==========================================
+            // STANDALONE NINJA SHINOBI MONKEY
+            // ==========================================
+            // Curled Tail
+            ctx.save();
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-7, 2);
+            ctx.bezierCurveTo(-14, -4, -20, 2, -17, -12);
+            ctx.stroke();
+
+            // Shinobi Cowl Ears
+            for (const earY of [-10, 10]) {
+              ctx.fillStyle = '#0f172a';
+              ctx.beginPath();
+              ctx.arc(-2, earY, 4.5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            // Torso (Dark Shinobi Gi)
+            ctx.fillStyle = '#1e1b4b';
+            ctx.beginPath();
+            ctx.ellipse(-3, 0, 8.5, 7.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // Crimson Sash
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(-5, -6, 3.5, 12);
+
+            // Ninja Cowl Head
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(1, 0, 9.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#312e81';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Crimson Forehead Plate
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(0, -6, 2.5, 12);
+
+            // Piercing Glowing Shinobi Eyes
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.arc(4, -2.8, 1.8, 0, Math.PI * 2);
+            ctx.arc(4, 2.8, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Throwing Hand & Shuriken
+            ctx.fillStyle = '#334155';
+            ctx.beginPath();
+            ctx.arc(7, 5, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 4-Point Steel Shuriken
+            ctx.save();
+            ctx.translate(13, 5);
+            ctx.rotate(now * 8);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.moveTo(0, -6); ctx.lineTo(1.8, -1.8);
+            ctx.lineTo(6, 0); ctx.lineTo(1.8, 1.8);
+            ctx.lineTo(0, 6); ctx.lineTo(-1.8, 1.8);
+            ctx.lineTo(-6, 0); ctx.lineTo(-1.8, -1.8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#475569';
+            ctx.beginPath();
+            ctx.arc(0, 0, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            ctx.restore();
+
+          } else if (t.typeKey === 'super') {
+            // ==========================================
+            // STANDALONE SUPER MONKEY WITH RED CAPE
+            // ==========================================
+            ctx.save();
+            // Flowing Red Superhero Cape
+            const capeFlutter = Math.sin(now * 6) * 4;
+            ctx.fillStyle = '#b91c1c';
+            ctx.beginPath();
+            ctx.moveTo(-5, -6);
+            ctx.lineTo(-24, -14 + capeFlutter);
+            ctx.lineTo(-19, capeFlutter);
+            ctx.lineTo(-24, 14 + capeFlutter);
+            ctx.lineTo(-5, 6);
+            ctx.closePath();
+            ctx.fill();
+
+            // Ears
+            for (const earY of [-10.5, 10.5]) {
+              ctx.fillStyle = '#451a03';
+              ctx.beginPath();
+              ctx.arc(-2, earY, 5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#fed7aa';
+              ctx.beginPath();
+              ctx.arc(-1.5, earY, 2.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            // Heroic Blue Suit Torso
+            const superTorso = ctx.createRadialGradient(-3, 0, 1, -2, 0, 10);
+            superTorso.addColorStop(0, '#3b82f6');
+            superTorso.addColorStop(1, '#1d4ed8');
+            ctx.fillStyle = superTorso;
+            ctx.beginPath();
+            ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#1e3a8a';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // Head (Fur with Mask/Hair)
+            const sHead = ctx.createRadialGradient(2, -2, 1, 1, 0, 10);
+            sHead.addColorStop(0, '#92400e');
+            sHead.addColorStop(1, '#78350f');
+            ctx.fillStyle = sHead;
+            ctx.beginPath();
+            ctx.arc(1, 0, 9.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
+
+            // Peach Face
+            ctx.fillStyle = '#fed7aa';
+            ctx.beginPath();
+            ctx.ellipse(5, 0, 4.5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Glowing Heroic Gold Eyes
+            ctx.fillStyle = '#facc15';
+            ctx.shadowColor = '#eab308';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(4, -2.8, 2.2, 0, Math.PI * 2);
+            ctx.arc(4, 2.8, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Power Fist Forward
+            ctx.fillStyle = '#2563eb';
+            ctx.beginPath();
+            ctx.ellipse(6, 6, 4.5, 3, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fed7aa';
+            ctx.beginPath();
+            ctx.arc(10, 6.5, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Plasma Energy Sparks in Hand
+            ctx.fillStyle = '#67e8f9';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(12, 6.5, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+
+          } else if (t.typeKey === 'boomerang') {
+            // ==========================================
+            // STANDALONE BOOMERANG RANGER MONKEY
+            // ==========================================
+            ctx.save();
+            // 1. Curled Tail
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 4.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-7, 2);
+            ctx.bezierCurveTo(-14, -5, -21, 1, -18, -13);
+            ctx.stroke();
+
+            // 2. Ears
+            for (const earY of [-10.5, 10.5]) {
+              ctx.fillStyle = '#451a03';
+              ctx.beginPath();
+              ctx.arc(-2, earY, 5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#fed7aa';
+              ctx.beginPath();
+              ctx.arc(-1.5, earY, 2.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            // 3. Torso
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.ellipse(-3, 0, 8.5, 7.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // 4. Head with Ranger Cap
+            ctx.fillStyle = '#854d0e';
+            ctx.beginPath();
+            ctx.arc(1, 0, 9.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Khaki Ranger Hat with Brim
+            ctx.fillStyle = '#a16207';
+            ctx.beginPath();
+            ctx.ellipse(-1, 0, 8, 11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#713f12';
+            ctx.beginPath();
+            ctx.ellipse(-1, 0, 5, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Peach Muzzle
+            ctx.fillStyle = '#fed7aa';
+            ctx.beginPath();
+            ctx.ellipse(5, 0, 4.5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Focused Eyes
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(4, -2.5, 2, 0, Math.PI * 2);
+            ctx.arc(4, 2.5, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(4.5, -2.8, 0.7, 0, Math.PI * 2);
+            ctx.arc(4.5, 2.2, 0.7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 5. Golden Curved Boomerang in Hand
+            ctx.save();
+            ctx.translate(11, 5);
+            ctx.rotate(0.35);
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.moveTo(-3, -11);
+            ctx.quadraticCurveTo(7, 0, -3, 11);
+            ctx.lineTo(-1, 12);
+            ctx.quadraticCurveTo(10, 0, -1, -12);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#b45309';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+            ctx.restore();
+
+          } else if (t.typeKey === 'sniper') {
+            // ==========================================
+            // STANDALONE CAMO SNIPER MONKEY
+            // ==========================================
+            // Prone / Kneeling Camo Body
+            ctx.fillStyle = '#14532d'; // Dark Olive Camo Fatigues
+            ctx.beginPath();
+            ctx.ellipse(-2, 0, 13, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Military Green Beret / Ghillie Cap
+            ctx.fillStyle = '#166534';
+            ctx.beginPath();
+            ctx.arc(-2, 0, 11, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#eab308'; // Gold Military Badge
+            ctx.beginPath();
+            ctx.arc(-2, -8, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Intense Aiming Eyes Looking through scope
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(5, -2, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(5.6, -2.6, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Long Heavy Precision Sniper Rifle
+            // Stock & Receiver
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(2, -1, 14, 4);
+            // Long Steel Barrel
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(16, 0, 22, 2.5);
+            // Muzzle Brake
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(36, -1, 4, 4.5);
+            // Telescopic Scope
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(8, -4, 12, 3);
+            ctx.fillStyle = '#38bdf8'; // Lens Reflection
+            ctx.fillRect(18, -3.5, 1.5, 2);
+            // Bipod Legs
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(30, 2); ctx.lineTo(34, 8);
+            ctx.moveTo(30, -1); ctx.lineTo(34, -7);
+            ctx.stroke();
+
+            // Tactical Laser Sight Line pointing to target
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(38, 1); ctx.lineTo(80, 1);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+          } else if (t.typeKey === 'wizard') {
+            // ==========================================
+            // STANDALONE ARCANE WIZARD MONKEY
+            // ==========================================
+            // Flowing Star-Patterned Wizard Robes
+            ctx.fillStyle = '#4c1d95'; // Deep Violet Robe
+            ctx.beginPath();
+            ctx.ellipse(-2, 0, 13, 11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Gold Astrological Star Emblems on robe
+            ctx.fillStyle = '#facc15';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('✦', -6, -4);
+            ctx.fillText('✦', -6, 6);
+
+            // Tall Pointed Wizard Hat with Wide Brim
+            ctx.fillStyle = '#3b0764';
+            ctx.beginPath();
+            ctx.arc(0, 0, 13, 0, Math.PI * 2);
+            ctx.fill();
+            // Hat Cone & Buckle
+            ctx.fillStyle = '#6b21a8';
+            ctx.beginPath();
+            ctx.moveTo(-6, -8);
+            ctx.lineTo(6, -8);
+            ctx.lineTo(0, -18);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(-3, -9, 6, 2.5); // Gold Buckle
+
+            // Glowing Arcane Eyes
+            ctx.fillStyle = '#c084fc';
+            ctx.shadowColor = '#c084fc';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(4, -3, 2.2, 0, Math.PI * 2);
+            ctx.arc(4, 3, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Gnarled Wooden Staff with Swirling Magic Orb
+            // Staff shaft
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(8, -12, 3, 24);
+            // Glowing Magic Orb atop staff
+            const orbPulse = Math.sin(now * 6) * 1.5;
+            const orbGrad = ctx.createRadialGradient(9.5, -12, 1, 9.5, -12, 6 + orbPulse);
+            orbGrad.addColorStop(0, '#ffffff');
+            orbGrad.addColorStop(0.4, '#c084fc');
+            orbGrad.addColorStop(1, 'rgba(147, 51, 234, 0)');
+            ctx.fillStyle = orbGrad;
+            ctx.beginPath();
+            ctx.arc(9.5, -12, 6 + orbPulse, 0, Math.PI * 2);
+            ctx.fill();
+
+          } else {
+            // Base Standalone Figure for other types
+            ctx.fillStyle = t.color;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 12, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#00000044';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(TOWER_SPECS[t.typeKey].icon, 0, 0);
+          }
+        }
+        ctx.restore();
+      }
+
+      // 8. Projectiles Rendering
+      for (const p of projectiles) {
+        if (p.isBoomerang) {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.theta * 4);
+          ctx.fillStyle = '#facc15';
+          ctx.beginPath();
+          ctx.arc(0, 0, 7, 0, Math.PI);
+          ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.fillStyle = p.isExplosive ? '#0f172a' : (p.isLaser ? '#38bdf8' : (p.isHoming ? '#c084fc' : '#facc15'));
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 9. Particles & Laser Beams
+      for (const pt of particles) {
+        if (pt.isBeam) {
+          ctx.strokeStyle = pt.color;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(pt.x, pt.y);
+          ctx.lineTo(pt.targetX, pt.targetY);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 10. Floating Texts
+      for (const ft of floatingTexts) {
+        ctx.fillStyle = ft.color;
+        ctx.font = `bold ${ft.size}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(ft.text, ft.x, ft.y);
+      }
+
+      // 11. Co-Op Partner Real-Time Cursor & Ghost Tower Preview
+      if (netMode !== 'offline' && peerConnected && peerCursor.active) {
+        ctx.save();
+        // Partner Ghost Tower preview if partner is selecting a tower
+        if (peerCursor.selectedKey && TOWER_SPECS[peerCursor.selectedKey]) {
+          const pSpec = TOWER_SPECS[peerCursor.selectedKey];
+          ctx.fillStyle = 'rgba(236, 72, 153, 0.2)';
+          ctx.strokeStyle = '#ec4899';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(peerCursor.x, peerCursor.y, Math.min(pSpec.range, 350), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = pSpec.color;
+          ctx.beginPath();
+          ctx.arc(peerCursor.x, peerCursor.y, 16, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Partner Cursor Pointer
+        ctx.translate(peerCursor.x, peerCursor.y);
+        ctx.fillStyle = '#ec4899';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(16, 12);
+        ctx.lineTo(9, 14);
+        ctx.lineTo(13, 23);
+        ctx.lineTo(8, 25);
+        ctx.lineTo(5, 16);
+        ctx.lineTo(0, 19);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Partner Name Tag
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(18, 14, 80, 18);
+        ctx.fillStyle = '#f472b6';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(peerName || 'Partner', 22, 27);
+        ctx.restore();
+      }
+    }
+
+    // --- 12. UI Sync & Game Lifecycle ---
+    function updateUI() {
+      document.getElementById('cash-val').textContent = cash;
+      document.getElementById('lives-val').textContent = lives;
+      document.getElementById('round-val').textContent = currentRound;
+
+      for (const [key, spec] of Object.entries(TOWER_SPECS)) {
+        const btn = document.getElementById(`btn-tower-${key}`);
+        if (btn) {
+          btn.disabled = cash < spec.cost;
+          btn.classList.toggle('selected', selectedTowerKey === key);
+        }
+      }
+
+      if (inspectedTower) inspectTower(inspectedTower);
+    }
+
+    function triggerGameOver() {
+      isGameOver = true;
+      document.getElementById('modal-title').textContent = 'Game Over';
+      document.getElementById('modal-title').style.color = '#ef4444';
+      document.getElementById('modal-desc').textContent = `Defeated on Round ${currentRound}!`;
+      document.getElementById('game-modal').style.display = 'block';
+    }
+
+    function showVictory() {
+      isGameOver = true;
+      document.getElementById('modal-title').textContent = '🎉 Ultimate Victory!';
+      document.getElementById('modal-title').style.color = '#10b981';
+      document.getElementById('modal-desc').textContent = 'You and your co-op partner conquered all 40 Waves including the ZOMG Titan!';
+      document.getElementById('game-modal').style.display = 'block';
+    }
+
+    function restartGame() {
+      cash = 800;
+      lives = 100;
+      currentRound = 1;
+      isGameOver = false;
+      isWaveActive = false;
+      bloons = [];
+      towers = [];
+      projectiles = [];
+      particles = [];
+      floatingTexts = [];
+      waveSpawns = [];
+      inspectedTower = null;
+      selectedTowerKey = null;
+      document.getElementById('game-modal').style.display = 'none';
+      document.getElementById('wave-btn').disabled = false;
+      document.getElementById('wave-btn').textContent = '▶ Start Round';
+      updateUI();
+      updateWavePreview();
+    }
+
+    // 3D Model Viewer Modal Functions
+    function openModelViewer() {
+      document.getElementById('model-modal').style.display = 'block';
+    }
+    function closeModelViewer() {
+      document.getElementById('model-modal').style.display = 'none';
+    }
+    function switchModel(type) {
+      const img = document.getElementById('model-img');
+      const cap = document.getElementById('model-caption');
+      const tabDart = document.getElementById('tab-dart');
+      const tabDark = document.getElementById('tab-dark');
+
+      if (type === 'dart') {
+        img.src = 'dart_monkey_model.jpg';
+        cap.innerHTML = '<strong>Model:</strong> Classic Dart Monkey Hero Mesh | <strong>Lighting:</strong> Studio 3-Point PBR';
+        tabDart.style.background = '#4338ca';
+        tabDart.style.color = 'white';
+        tabDart.style.borderColor = '#6366f1';
+        tabDark.style.background = '#1e293b';
+        tabDark.style.color = '#cbd5e1';
+        tabDark.style.borderColor = '#334155';
+      } else {
+        img.src = 'dark_knight_monkey.jpg';
+        cap.innerHTML = '<strong>Model:</strong> Dark Monkey / Crossbow Master Mesh | <strong>Lighting:</strong> Stealth Purple Rim Light';
+        tabDark.style.background = '#4338ca';
+        tabDark.style.color = 'white';
+        tabDark.style.borderColor = '#6366f1';
+        tabDart.style.background = '#1e293b';
+        tabDart.style.color = '#cbd5e1';
+        tabDart.style.borderColor = '#334155';
+      }
+    }
+
+    // =========================================================================
+    // LAN & ONLINE MULTIPLAYER CONTROLLER (PeerJS WebRTC + WebSocket LAN Server)
+    // =========================================================================
+    function showToast(msg, isErr = false) {
+      const toast = document.getElementById('status-toast');
+      toast.textContent = msg;
+      toast.style.borderColor = isErr ? '#ef4444' : '#38bdf8';
+      toast.style.color = isErr ? '#fca5a5' : '#f8fafc';
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3800);
+    }
+
+    function openLanModal() {
+      document.getElementById('lan-modal').style.display = 'block';
+    }
+    function closeLanModal() {
+      document.getElementById('lan-modal').style.display = 'none';
+    }
+    function switchLanTab(tab) {
+      document.getElementById('lan-tab-p2p').classList.toggle('active', tab === 'p2p');
+      document.getElementById('lan-tab-ws').classList.toggle('active', tab === 'ws');
+      document.getElementById('tab-content-p2p').style.display = tab === 'p2p' ? 'block' : 'none';
+      document.getElementById('tab-content-ws').style.display = tab === 'ws' ? 'block' : 'none';
+    }
+
+    function copyRoomCode() {
+      if (!activeRoomCode) return;
+      navigator.clipboard.writeText(activeRoomCode).then(() => {
+        showToast(`📋 Room Code ${activeRoomCode} copied to clipboard!`);
+      }).catch(() => {
+        showToast(`Room Code: ${activeRoomCode}`);
+      });
+    }
+
+    function updateNetworkStatusUI() {
+      const statusText = document.getElementById('net-status-text');
+      const badgeText = document.getElementById('coop-badge-text');
+      const p1Pill = document.getElementById('name-p1');
+      const p2Pill = document.getElementById('name-p2');
+      const p2Dot = document.getElementById('dot-p2-icon');
+
+      if (netMode === 'offline') {
+        statusText.innerHTML = 'Status: <span style="color:#94a3b8;">Offline (Single Player)</span>';
+        badgeText.textContent = 'LAN / Co-Op Lobby';
+        p1Pill.textContent = 'P1 (You)';
+        p2Pill.textContent = 'P2 (Waiting...)';
+        p2Dot.style.background = '#64748b';
+        p2Dot.style.boxShadow = 'none';
+      } else {
+        const roleLabel = myRole === 'host' ? 'Host' : 'Client';
+        statusText.innerHTML = `Status: <span style="color:#10b981; font-weight:bold;">${peerConnected ? 'Connected (2/2 Players)' : 'Waiting for partner...'}</span> (${roleLabel} - ${activeRoomCode || 'LAN'})`;
+        badgeText.textContent = peerConnected ? `🌐 Co-Op: ${activeRoomCode || 'CONNECTED'}` : `🌐 Waiting: ${activeRoomCode}`;
+        
+        p1Pill.textContent = myRole === 'host' ? 'P1 (You - Host)' : `P1 (${peerName || 'Host'})`;
+        p2Pill.textContent = myRole === 'client' ? 'P2 (You - Client)' : (peerConnected ? `P2 (${peerName})` : 'P2 (Waiting...)');
+        p2Dot.style.background = peerConnected ? '#ec4899' : '#64748b';
+        p2Dot.style.boxShadow = peerConnected ? '0 0 6px #ec4899' : 'none';
+      }
+    }
+
+    // 1. Direct Browser P2P Hosting (PeerJS / WebRTC)
+    function startHostP2P() {
+      if (peerInstance) peerInstance.destroy();
+      const randomCode = 'BTD' + Math.floor(100 + Math.random() * 900);
+      activeRoomCode = randomCode;
+
+      try {
+        peerInstance = new Peer(randomCode, {
+          debug: 1,
+          config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] }
+        });
+      } catch (err) {
+        showToast('PeerJS initialization error: ' + err.message, true);
+        return;
+      }
+
+      peerInstance.on('open', (id) => {
+        activeRoomCode = id;
+        netMode = 'p2p_host';
+        myRole = 'host';
+        myPlayerName = 'Host (P1)';
+        document.getElementById('display-room-code').textContent = id;
+        document.getElementById('host-code-box').style.display = 'block';
+        document.getElementById('btn-host-p2p').disabled = true;
+        document.getElementById('btn-host-p2p').textContent = 'Hosting Room ' + id;
+        updateNetworkStatusUI();
+        showToast(`🚀 Session hosted! Code: ${id}`);
+      });
+
+      peerInstance.on('connection', (conn) => {
+        peerConnection = conn;
+        setupPeerConnectionEvents(conn);
+      });
+
+      peerInstance.on('error', (err) => {
+        if (err.type === 'unavailable-id') {
+          // Retry with new random suffix
+          startHostP2P();
+        } else {
+          showToast(`Network Notice: ${err.type}`, true);
+        }
+      });
+    }
+
+    // 2. Direct Browser P2P Joining (PeerJS / WebRTC)
+    function joinP2P() {
+      const codeInput = document.getElementById('input-join-code');
+      const targetCode = codeInput.value.trim().toUpperCase();
+      if (!targetCode) {
+        showToast('Please enter a valid room code!', true);
+        return;
+      }
+
+      if (peerInstance) peerInstance.destroy();
+      const myId = 'JOIN' + Math.floor(1000 + Math.random() * 9000);
+
+      try {
+        peerInstance = new Peer(myId, {
+          debug: 1,
+          config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] }
+        });
+      } catch (err) {
+        showToast('PeerJS connection error: ' + err.message, true);
+        return;
+      }
+
+      peerInstance.on('open', () => {
+        const conn = peerInstance.connect(targetCode, { reliable: true });
+        peerConnection = conn;
+        netMode = 'p2p_client';
+        myRole = 'client';
+        myPlayerName = 'Partner (P2)';
+        activeRoomCode = targetCode;
+        setupPeerConnectionEvents(conn);
+        showToast(`Connecting to ${targetCode}...`);
+      });
+
+      peerInstance.on('error', (err) => {
+        showToast(`Connection failed: ${err.message}`, true);
+      });
+    }
+
+    function setupPeerConnectionEvents(conn) {
+      conn.on('open', () => {
+        peerConnected = true;
+        peerName = myRole === 'host' ? 'Partner (P2)' : 'Host (P1)';
+        updateNetworkStatusUI();
+        showToast(`🎉 Co-Op Connected! Playing with ${peerName}!`);
+
+        // If host, send current state snapshot to client
+        if (myRole === 'host') {
+          sendNetMessage({
+            type: 'STATE_SNAPSHOT',
+            cash,
+            lives,
+            currentRound,
+            isWaveActive,
+            towers: towers.map(t => ({
+              id: t.id, typeKey: t.typeKey, x: t.x, y: t.y, owner: t.owner,
+              totalCost: t.totalCost, p1Tier: t.p1Tier, p2Tier: t.p2Tier, p3Tier: t.p3Tier,
+              targetPriority: t.targetPriority
+            }))
+          });
+        }
+      });
+
+      conn.on('data', (data) => {
+        handleIncomingNetMessage(data);
+      });
+
+      conn.on('close', () => {
+        peerConnected = false;
+        showToast(`⚠️ Partner disconnected.`, true);
+        updateNetworkStatusUI();
+      });
+    }
+
+    // 3. Dedicated WebSocket LAN Server Connection (node server.js)
+    function connectWebSocketServer() {
+      const urlInput = document.getElementById('input-ws-url').value.trim() || 'ws://localhost:3000';
+      if (wsConnection) wsConnection.close();
+
+      try {
+        wsConnection = new WebSocket(urlInput);
+      } catch (e) {
+        showToast('WebSocket connection failed: ' + e.message, true);
+        return;
+      }
+
+      wsConnection.onopen = () => {
+        showToast('Connected to LAN Node Server!');
+        const roomCode = prompt('Enter Room Code to Host or Join (e.g. 1234):', '1234') || '1234';
+        activeRoomCode = roomCode.toUpperCase();
+        wsConnection.send(JSON.stringify({
+          type: 'HOST_ROOM',
+          roomId: activeRoomCode,
+          name: 'Player ' + Math.floor(Math.random() * 99)
+        }));
+      };
+
+      wsConnection.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'ROOM_CREATED' || msg.type === 'ROOM_JOINED') {
+            netMode = 'ws_host';
+            myRole = msg.role;
+            peerConnected = (msg.type === 'ROOM_JOINED');
+            updateNetworkStatusUI();
+            showToast(msg.message);
+          } else if (msg.type === 'PEER_CONNECTED') {
+            peerConnected = true;
+            peerName = msg.peerName;
+            updateNetworkStatusUI();
+            showToast(`🎉 ${peerName} joined your LAN session!`);
+            // Send state
+            if (myRole === 'host') {
+              sendNetMessage({
+                type: 'STATE_SNAPSHOT',
+                cash, lives, currentRound, isWaveActive,
+                towers: towers.map(t => ({
+                  id: t.id, typeKey: t.typeKey, x: t.x, y: t.y, owner: t.owner,
+                  totalCost: t.totalCost, p1Tier: t.p1Tier, p2Tier: t.p2Tier, p3Tier: t.p3Tier,
+                  targetPriority: t.targetPriority
+                }))
+              });
+            }
+          } else {
+            handleIncomingNetMessage(msg);
+          }
+        } catch (e) {}
+      };
+
+      wsConnection.onerror = () => {
+        showToast('Cannot reach LAN server. Ensure "node server.js" is running!', true);
+      };
+    }
+
+    // Unified message transmitter
+    function sendNetMessage(msg) {
+      if (peerConnection && peerConnection.open) {
+        peerConnection.send(msg);
+      } else if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        wsConnection.send(JSON.stringify({
+          type: 'RELAY',
+          roomId: activeRoomCode,
+          payload: msg
+        }));
+      }
+    }
+
+    // Unified message receiver & state synchronizer
+    function handleIncomingNetMessage(rawMsg) {
+      const msg = rawMsg.payload || rawMsg;
+      if (!msg || !msg.type) return;
+
+      switch (msg.type) {
+        case 'CURSOR_MOVE':
+          peerCursor.x = msg.x;
+          peerCursor.y = msg.y;
+          peerCursor.selectedKey = msg.selectedKey;
+          peerCursor.active = true;
+          break;
+
+        case 'CURSOR_LEAVE':
+          peerCursor.active = false;
+          break;
+
+        case 'PLACE_TOWER':
+          const tData = msg.towerData;
+          if (!towers.some(t => t.id === tData.id)) {
+            const placedTower = createTower(tData.typeKey, tData.x, tData.y, tData.owner || 'Partner');
+            placedTower.id = tData.id;
+            placedTower.totalCost = tData.totalCost || placedTower.totalCost;
+            towers.push(placedTower);
+            playSfx('dart');
+            createFloatingText(tData.x, tData.y - 20, `${tData.owner} placed ${placedTower.name}!`, '#ec4899');
+            if (msg.newCash !== undefined) cash = msg.newCash;
+            updateUI();
+          }
+          break;
+
+        case 'UPGRADE_TOWER':
+          const tToUpgrade = towers.find(t => t.id === msg.towerId);
+          if (tToUpgrade) {
+            inspectedTower = tToUpgrade;
+            buyUpgrade(msg.pathNum, true);
+            if (msg.newCash !== undefined) cash = msg.newCash;
+            updateUI();
+          }
+          break;
+
+        case 'SELL_TOWER':
+          const tToSell = towers.find(t => t.id === msg.towerId);
+          if (tToSell) {
+            inspectedTower = tToSell;
+            sellInspectedTower(true);
+            if (msg.newCash !== undefined) cash = msg.newCash;
+            updateUI();
+          }
+          break;
+
+        case 'SET_PRIORITY':
+          const tPrior = towers.find(t => t.id === msg.towerId);
+          if (tPrior) {
+            tPrior.targetPriority = msg.priority;
+            if (inspectedTower && inspectedTower.id === tPrior.id) {
+              document.getElementById('target-select').value = msg.priority;
+            }
+          }
+          break;
+
+        case 'START_WAVE':
+          triggerNextWave(true);
+          createFloatingText(canvas.width / 2, 80, `Partner started Round ${currentRound}!`, '#38bdf8', 15);
+          break;
+
+        case 'STATE_SNAPSHOT':
+          cash = msg.cash;
+          lives = msg.lives;
+          currentRound = msg.currentRound;
+          // Synchronize full tower fleet
+          towers = [];
+          for (const st of msg.towers) {
+            const restored = createTower(st.typeKey, st.x, st.y, st.owner);
+            restored.id = st.id;
+            restored.totalCost = st.totalCost;
+            restored.targetPriority = st.targetPriority || 'first';
+            // Apply tiers
+            const spec = TOWER_SPECS[st.typeKey];
+            for (let p = 1; p <= 3; p++) {
+              const tierCount = st[`p${p}Tier`] || 0;
+              for (let idx = 0; idx < tierCount; idx++) {
+                if (spec.upgrades[`path${p}`][idx]) {
+                  spec.upgrades[`path${p}`][idx].apply(restored);
+                  restored[`p${p}Tier`]++;
+                }
+              }
+            }
+            towers.push(restored);
+          }
+          updateUI();
+          updateWavePreview();
+          showToast(`🔄 Synced game state from Host!`);
+          break;
+      }
+    }
+
+    function disconnectCoop() {
+      if (peerConnection) peerConnection.close();
+      if (peerInstance) peerInstance.destroy();
+      if (wsConnection) wsConnection.close();
+      netMode = 'offline';
+      peerConnected = false;
+      activeRoomCode = null;
+      document.getElementById('btn-host-p2p').disabled = false;
+      document.getElementById('btn-host-p2p').textContent = 'Host Co-Op Session';
+      document.getElementById('host-code-box').style.display = 'none';
+      updateNetworkStatusUI();
+      showToast('Switched to Single Player Offline.');
+    }
+
+    // Boot
+    updateUI();
+    updateWavePreview();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
