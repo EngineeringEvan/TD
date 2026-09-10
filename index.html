@@ -4,8 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bloons Co-Op TD Ultimate Edition</title>
-  <!-- PeerJS for WebRTC Direct Browser P2P LAN/Internet Multiplayer -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- PeerJS for WebRTC Direct Browser P2P LAN/Internet Multiplayer (with CDN fallback) -->
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script>
+    if (typeof Peer === 'undefined') {
+      document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');
+    }
+  </script>
   <style>
     * {
       box-sizing: border-box;
@@ -617,10 +622,15 @@
       </div>
     </div>
 
-    <!-- Current Network Status Footer -->
-    <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px;">
-      <div id="net-status-text" style="color: #94a3b8;">Status: <span>Offline (Single Player)</span></div>
-      <button onclick="disconnectCoop()" style="background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 11px;">Disconnect</button>
+    <!-- Current Network Status & Live Diagnostics Log -->
+    <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #334155; font-size: 11.5px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <div id="net-status-text" style="color: #94a3b8;">Status: <span style="color:#f8fafc;">Offline (Single Player)</span></div>
+        <button onclick="disconnectCoop()" style="background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 11px;">Disconnect</button>
+      </div>
+      <div id="net-log-box" style="background: #020617; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 10px; font-family: monospace; font-size: 10.5px; color: #38bdf8; max-height: 70px; overflow-y: auto;">
+        📡 Network ready. Choose Host or Join to start co-op.
+      </div>
     </div>
   </div>
 
@@ -3016,19 +3026,51 @@
       }
     }
 
+    function logNet(msg) {
+      console.log('[COOP]', msg);
+      const box = document.getElementById('net-log-box');
+      if (box) {
+        box.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>` + box.innerHTML;
+      }
+    }
+
+    // Comprehensive STUN server pool for maximum NAT traversal
+    const ICE_CONFIG = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun.cloudflare.com:3478' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    };
+
     // 1. Direct Browser P2P Hosting (PeerJS / WebRTC)
     function startHostP2P() {
-      if (peerInstance) peerInstance.destroy();
-      const randomCode = 'BTD' + Math.floor(100 + Math.random() * 900);
-      activeRoomCode = randomCode;
+      if (typeof Peer === 'undefined') {
+        showToast('PeerJS library not loaded. Check internet connection!', true);
+        logNet('❌ Error: PeerJS library is undefined.');
+        return;
+      }
 
+      if (peerInstance) {
+        try { peerInstance.destroy(); } catch (e) {}
+      }
+
+      logNet('Connecting to WebRTC matchmaking network...');
+      showToast('Creating room...');
+
+      // Let PeerJS generate a clean unique ID or use short custom code
+      const desiredId = 'btd-' + Math.random().toString(36).substring(2, 7);
+      
       try {
-        peerInstance = new Peer(randomCode, {
-          debug: 1,
-          config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] }
+        peerInstance = new Peer(desiredId, {
+          debug: 2,
+          config: ICE_CONFIG
         });
       } catch (err) {
-        showToast('PeerJS initialization error: ' + err.message, true);
+        logNet(`❌ Peer init failed: ${err.message}`);
+        showToast('Init failed: ' + err.message, true);
         return;
       }
 
@@ -3040,73 +3082,109 @@
         document.getElementById('display-room-code').textContent = id;
         document.getElementById('host-code-box').style.display = 'block';
         document.getElementById('btn-host-p2p').disabled = true;
-        document.getElementById('btn-host-p2p').textContent = 'Hosting Room ' + id;
+        document.getElementById('btn-host-p2p').textContent = 'Hosting Active';
         updateNetworkStatusUI();
+        logNet(`✅ Room ready! Share code: "${id}"`);
         showToast(`🚀 Session hosted! Code: ${id}`);
       });
 
       peerInstance.on('connection', (conn) => {
+        logNet(`Incoming connection from partner...`);
         peerConnection = conn;
         setupPeerConnectionEvents(conn);
       });
 
       peerInstance.on('error', (err) => {
+        logNet(`⚠️ WebRTC Notice: ${err.type} - ${err.message}`);
         if (err.type === 'unavailable-id') {
-          // Retry with new random suffix
           startHostP2P();
         } else {
           showToast(`Network Notice: ${err.type}`, true);
         }
       });
+
+      peerInstance.on('disconnected', () => {
+        logNet('Disconnected from signaling server. Reconnecting...');
+        try { peerInstance.reconnect(); } catch (e) {}
+      });
     }
 
     // 2. Direct Browser P2P Joining (PeerJS / WebRTC)
     function joinP2P() {
+      if (typeof Peer === 'undefined') {
+        showToast('PeerJS library not loaded. Check internet connection!', true);
+        logNet('❌ Error: PeerJS library is undefined.');
+        return;
+      }
+
       const codeInput = document.getElementById('input-join-code');
-      const targetCode = codeInput.value.trim().toUpperCase();
+      const targetCode = codeInput.value.trim().toLowerCase();
       if (!targetCode) {
         showToast('Please enter a valid room code!', true);
         return;
       }
 
-      if (peerInstance) peerInstance.destroy();
-      const myId = 'JOIN' + Math.floor(1000 + Math.random() * 9000);
+      if (peerInstance) {
+        try { peerInstance.destroy(); } catch (e) {}
+      }
+
+      logNet(`Initializing joiner client...`);
+      showToast(`Connecting to ${targetCode}...`);
 
       try {
-        peerInstance = new Peer(myId, {
-          debug: 1,
-          config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] }
+        peerInstance = new Peer({
+          debug: 2,
+          config: ICE_CONFIG
         });
       } catch (err) {
-        showToast('PeerJS connection error: ' + err.message, true);
+        logNet(`❌ Peer join init failed: ${err.message}`);
+        showToast('Connection error: ' + err.message, true);
         return;
       }
 
-      peerInstance.on('open', () => {
-        const conn = peerInstance.connect(targetCode, { reliable: true });
+      peerInstance.on('open', (myId) => {
+        logNet(`Contacting host "${targetCode}"...`);
+        const conn = peerInstance.connect(targetCode, {
+          reliable: true,
+          serialization: 'json'
+        });
+
         peerConnection = conn;
         netMode = 'p2p_client';
         myRole = 'client';
         myPlayerName = 'Partner (P2)';
         activeRoomCode = targetCode;
+
         setupPeerConnectionEvents(conn);
-        showToast(`Connecting to ${targetCode}...`);
       });
 
       peerInstance.on('error', (err) => {
-        showToast(`Connection failed: ${err.message}`, true);
+        logNet(`❌ Connection error: ${err.type} - ${err.message}`);
+        showToast(`Connection failed: ${err.type}`, true);
       });
     }
 
     function setupPeerConnectionEvents(conn) {
+      logNet(`Negotiating handshake channel...`);
+
+      // Fallback timer if connection hangs
+      const connectTimeout = setTimeout(() => {
+        if (!peerConnected) {
+          logNet(`⏳ Handshake taking longer than usual. If on separate networks, check NAT settings.`);
+        }
+      }, 7000);
+
       conn.on('open', () => {
+        clearTimeout(connectTimeout);
         peerConnected = true;
         peerName = myRole === 'host' ? 'Partner (P2)' : 'Host (P1)';
         updateNetworkStatusUI();
+        logNet(`🎉 P2P Channel connected successfully with ${peerName}!`);
         showToast(`🎉 Co-Op Connected! Playing with ${peerName}!`);
 
         // If host, send current state snapshot to client
         if (myRole === 'host') {
+          logNet(`Sending game state snapshot to partner...`);
           sendNetMessage({
             type: 'STATE_SNAPSHOT',
             cash,
@@ -3128,8 +3206,13 @@
 
       conn.on('close', () => {
         peerConnected = false;
+        logNet(`⚠️ Partner disconnected from session.`);
         showToast(`⚠️ Partner disconnected.`, true);
         updateNetworkStatusUI();
+      });
+
+      conn.on('error', (err) => {
+        logNet(`❌ Peer data channel error: ${err}`);
       });
     }
 
