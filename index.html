@@ -598,7 +598,7 @@
   <!-- Top Header Bar -->
   <div class="top-header">
     <div class="lobby-badge">
-      <span class="version-tag" title="Build Version">v1.0.4-COOP</span>
+      <span class="version-tag" title="Build Version">v1.0.5-COOP</span>
       <button class="btn-lobby-trigger" onclick="openLanModal()">
         <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
       </button>
@@ -632,7 +632,7 @@
       Captures all network events, WebRTC state, connection handshakes, and uncaught errors.
     </div>
     <div id="debug-log-view" class="debug-log-view">
-      [System] Diagnostic log initialized (v1.0.4-COOP)
+      [System] Diagnostic log initialized (v1.0.5-COOP)
     </div>
     <div style="display: flex; gap: 10px; justify-content: flex-end;">
       <button onclick="clearDebugLog()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Clear Log</button>
@@ -3047,7 +3047,7 @@
     }
 
     // =========================================================================
-    // GLOBAL DIAGNOSTIC & ERROR LOGGER (Version: v1.0.4-COOP)
+    // GLOBAL DIAGNOSTIC & ERROR LOGGER (Version: v1.0.5-COOP)
     // =========================================================================
     const DEBUG_LOGS = [];
     let errCount = 0;
@@ -3102,7 +3102,7 @@
       showToast('Debug log cleared.');
     }
     function copyDebugLog() {
-      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.0.4-COOP) ===\n`;
+      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.0.5-COOP) ===\n`;
       report += `Time: ${new Date().toISOString()}\n`;
       report += `User Agent: ${navigator.userAgent}\n`;
       report += `PeerJS Available: ${typeof Peer !== 'undefined'}\n`;
@@ -3194,15 +3194,36 @@
       }
     }
 
-    // Comprehensive STUN server pool for maximum NAT traversal
+    // Comprehensive STUN and TURN server pool for NAT traversal & symmetric NAT relay
     const ICE_CONFIG = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun.cloudflare.com:3478' },
-        { urls: 'stun:global.stun.twilio.com:3478' }
-      ]
+        { urls: 'stun:openrelay.metered.ca:80' },
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
+      ],
+      iceCandidatePoolSize: 10
     };
 
     // 1. Direct Browser P2P Hosting (PeerJS / WebRTC)
@@ -3327,11 +3348,32 @@
     function setupPeerConnectionEvents(conn) {
       logNet(`Negotiating handshake channel with "${conn.peer}"...`);
 
-      // Monitor underlying WebRTC peer connection ICE candidate state
-      if (conn.peerConnection) {
+      // Monitor underlying WebRTC peer connection ICE candidate & connection state
+      const attachPcListeners = () => {
+        if (!conn.peerConnection) return;
         conn.peerConnection.oniceconnectionstatechange = () => {
-          logNet(`ICE Connection State: ${conn.peerConnection.iceConnectionState}`);
+          const state = conn.peerConnection.iceConnectionState;
+          logNet(`ICE Connection State: ${state}`);
+          if (state === 'connected' || state === 'completed') {
+            logNet(`✅ WebRTC connection established (Direct UDP or TURN Relay active)!`);
+          } else if (state === 'failed') {
+            logNet(`❌ ICE connection failed. Could not find valid STUN/TURN route.`);
+          }
         };
+        conn.peerConnection.onconnectionstatechange = () => {
+          logNet(`Peer Connection State: ${conn.peerConnection.connectionState}`);
+        };
+      };
+
+      attachPcListeners();
+      if (!conn.peerConnection) {
+        const pcCheck = setInterval(() => {
+          if (conn.peerConnection) {
+            attachPcListeners();
+            clearInterval(pcCheck);
+          }
+        }, 100);
+        setTimeout(() => clearInterval(pcCheck), 5000);
       }
 
       // Fallback timer if connection hangs
