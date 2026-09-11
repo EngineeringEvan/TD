@@ -348,6 +348,48 @@
       color: #facc15;
     }
 
+    /* Category Filter Tabs */
+    .category-tabs {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 6px;
+      background: #0f172a;
+      padding: 3px;
+      border-radius: 7px;
+      border: 1px solid #334155;
+    }
+    .cat-tab-btn {
+      flex: 1;
+      padding: 4px 2px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      text-align: center;
+    }
+    .cat-tab-btn:hover {
+      color: #f8fafc;
+      background: #1e293b;
+    }
+    .cat-tab-btn.active {
+      background: #3b82f6;
+      color: white;
+      box-shadow: 0 1px 4px rgba(59,130,246,0.4);
+    }
+    .water-badge {
+      font-size: 8.5px;
+      background: rgba(14, 165, 233, 0.2);
+      color: #38bdf8;
+      border: 1px solid #0284c7;
+      padding: 1px 3px;
+      border-radius: 3px;
+      margin-left: 2px;
+    }
+
     /* Upgrades Pane (3 Paths!) */
     .upgrade-pane {
       display: flex;
@@ -671,7 +713,7 @@
   <!-- Top Header Bar -->
   <div class="top-header">
     <div class="lobby-badge">
-      <span class="version-tag" title="Build Version">v1.4.0-MAPS</span>
+      <span class="version-tag" title="Build Version">v1.5.0-ALL-TOWERS</span>
       <button class="btn-lobby-trigger" onclick="openLanModal()">
         <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
       </button>
@@ -986,11 +1028,19 @@
         </div>
       </div>
 
-      <!-- Towers Deployment Grid (10 Towers!) -->
+      <!-- Towers Deployment Grid (All 23 BTD6 Towers!) -->
       <div class="panel-box">
         <div class="panel-heading">
-          <span>Deploy Towers (10)</span>
-          <span style="font-size:9.5px; color:#64748b;">(Buccaneer = Water Only)</span>
+          <span id="towers-heading">Deploy Towers (23)</span>
+          <span style="font-size:9.5px; color:#64748b;">(Sub & Buc = Water Only)</span>
+        </div>
+        <!-- Category Filter Tabs -->
+        <div class="category-tabs">
+          <button class="cat-tab-btn active" id="cat-tab-all" onclick="filterTowerCategory('all')">All (23)</button>
+          <button class="cat-tab-btn" id="cat-tab-primary" onclick="filterTowerCategory('primary')">Primary</button>
+          <button class="cat-tab-btn" id="cat-tab-military" onclick="filterTowerCategory('military')">Military</button>
+          <button class="cat-tab-btn" id="cat-tab-magic" onclick="filterTowerCategory('magic')">Magic</button>
+          <button class="cat-tab-btn" id="cat-tab-support" onclick="filterTowerCategory('support')">Support</button>
         </div>
         <div class="towers-scroll" id="towers-container">
           <!-- Dynamically populated -->
@@ -1438,10 +1488,11 @@
       zomg:    { color: '#16a34a', speed: 0.38, radius: 46, hp: 1000,reward: 500,next: 'bfb', childrenCount: 4, isMoab: true, isZomg: true }
     };
 
-    // --- 4. 10 Distinct Towers with 3 Upgrade Paths each! ---
+    // --- 4. All 23 Authentic BTD6 Towers with 3 Upgrade Paths each! ---
     const TOWER_SPECS = {
+      // ===== PRIMARY CATEGORY (6) =====
       dart: {
-        name: 'Dart Monkey', icon: '🎯', cost: 200, range: 115, fireRate: 1.15, projectileSpeed: 9.5, damage: 1, pierce: 1, color: '#92400e',
+        name: 'Dart Monkey', icon: '🎯', category: 'primary', cost: 200, range: 115, fireRate: 1.15, projectileSpeed: 9.5, damage: 1, pierce: 1, color: '#92400e',
         upgrades: {
           path1: [{ name: 'Sharp Darts', cost: 140, desc: '+2 Pierce', apply: (t) => t.pierce += 2 }, { name: 'Spike-o-pult', cost: 350, desc: '+2 Dmg, +5 Pierce, Pops Lead', apply: (t) => { t.damage += 2; t.pierce += 5; t.canPopLead = true; } }],
           path2: [{ name: 'Quick Shots', cost: 120, desc: '+40% Attack Speed', apply: (t) => t.fireRate *= 1.4 }, { name: 'Crossbow', cost: 480, desc: 'Huge Range & Double Damage', apply: (t) => { t.range += 55; t.damage += 2; } }],
@@ -1449,63 +1500,115 @@
         }
       },
       boomerang: {
-        name: 'Boomerang', icon: '🪃', cost: 320, range: 110, fireRate: 1.0, projectileSpeed: 8, damage: 1, pierce: 4, color: '#b45309', isBoomerang: true,
+        name: 'Boomerang', icon: '🪃', category: 'primary', cost: 320, range: 110, fireRate: 1.0, projectileSpeed: 8, damage: 1, pierce: 4, color: '#b45309', isBoomerang: true,
         upgrades: {
           path1: [{ name: 'Improved Rangs', cost: 180, desc: '+4 Pierce', apply: (t) => t.pierce += 4 }, { name: 'Glaives', cost: 380, desc: 'Fast Glaives, +1 Dmg, Pops Lead', apply: (t) => { t.damage += 1; t.canPopLead = true; } }],
           path2: [{ name: 'Faster Throwing', cost: 160, desc: '+45% Attack Speed', apply: (t) => t.fireRate *= 1.45 }, { name: 'Bionic Boomerang', cost: 650, desc: 'Cybernetic Arm 2.5x Fire Rate', apply: (t) => t.fireRate *= 2.5 }],
           path3: [{ name: 'Red Hot Rangs', cost: 200, desc: 'Burns Bloons & Pops Lead', apply: (t) => t.canPopLead = true }, { name: 'Kylie Boomerang', cost: 500, desc: 'Straight Heavy Throw, +2 Dmg', apply: (t) => { t.damage += 2; t.pierce += 5; } }]
         }
       },
-      tack: {
-        name: 'Tack Shooter', icon: '📍', cost: 280, range: 85, fireRate: 0.9, projectileSpeed: 8, damage: 1, pierce: 2, color: '#f97316', isTack: true,
-        upgrades: {
-          path1: [{ name: 'Faster Shooting', cost: 150, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Ring of Fire', cost: 620, desc: 'Burst of Flames, Melts Lead', apply: (t) => { t.damage += 2; t.canPopLead = true; t.isFire = true; } }],
-          path2: [{ name: 'More Tacks', cost: 140, desc: 'Shoots 12 Tacks instead of 8', apply: (t) => t.tackCount = 12 }, { name: 'Blade Shooter', cost: 450, desc: 'Sharp Razor Blades, +1 Dmg', apply: (t) => { t.damage += 1; t.pierce += 3; } }],
-          path3: [{ name: 'Long Range Tacks', cost: 110, desc: '+30% Tack Range', apply: (t) => t.range *= 1.3 }, { name: 'Tack Sprayer', cost: 500, desc: 'Shoots 16 Tacks in all directions', apply: (t) => t.tackCount = 16 }]
-        }
-      },
       bomb: {
-        name: 'Bomb Cannon', icon: '💣', cost: 420, range: 125, fireRate: 0.65, projectileSpeed: 7, damage: 2, splashRadius: 70, pierce: 14, isExplosive: true, canPopLead: true, color: '#475569',
+        name: 'Bomb Cannon', icon: '💣', category: 'primary', cost: 420, range: 125, fireRate: 0.65, projectileSpeed: 7, damage: 2, splashRadius: 70, pierce: 14, isExplosive: true, canPopLead: true, color: '#475569',
         upgrades: {
           path1: [{ name: 'Bigger Bombs', cost: 260, desc: '+40% Blast Radius', apply: (t) => { t.splashRadius *= 1.4; t.damage += 1; } }, { name: 'MOAB Eliminator', cost: 900, desc: '6x Damage to MOAB & Blimps', apply: (t) => t.moabMultiplier = 6 }],
           path2: [{ name: 'Faster Reload', cost: 220, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Cluster Bombs', cost: 700, desc: 'Splits into 6 secondary bombs', apply: (t) => t.hasCluster = true }],
           path3: [{ name: 'Extra Range', cost: 180, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Frag Bombs', cost: 400, desc: 'Shoots sharp shrapnel on impact', apply: (t) => t.pierce += 6 }]
         }
       },
+      tack: {
+        name: 'Tack Shooter', icon: '📍', category: 'primary', cost: 280, range: 85, fireRate: 0.9, projectileSpeed: 8, damage: 1, pierce: 2, color: '#f97316', isTack: true,
+        upgrades: {
+          path1: [{ name: 'Faster Shooting', cost: 150, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Ring of Fire', cost: 620, desc: 'Burst of Flames, Melts Lead', apply: (t) => { t.damage += 2; t.canPopLead = true; t.isFire = true; } }],
+          path2: [{ name: 'More Tacks', cost: 140, desc: 'Shoots 12 Tacks instead of 8', apply: (t) => t.tackCount = 12 }, { name: 'Blade Shooter', cost: 450, desc: 'Sharp Razor Blades, +1 Dmg', apply: (t) => { t.damage += 1; t.pierce += 3; } }],
+          path3: [{ name: 'Long Range Tacks', cost: 110, desc: '+30% Tack Range', apply: (t) => t.range *= 1.3 }, { name: 'Tack Sprayer', cost: 500, desc: 'Shoots 16 Tacks in all directions', apply: (t) => t.tackCount = 16 }]
+        }
+      },
       ice: {
-        name: 'Ice Monkey', icon: '❄️', cost: 360, range: 90, fireRate: 0.85, damage: 1, pierce: 20, isAoePulse: true, color: '#38bdf8',
+        name: 'Ice Monkey', icon: '❄️', category: 'primary', cost: 360, range: 90, fireRate: 0.85, damage: 1, pierce: 20, isAoePulse: true, color: '#38bdf8',
         upgrades: {
           path1: [{ name: 'Permafrost', cost: 200, desc: 'Permanently slows bloons by 40%', apply: (t) => t.permafrost = true }, { name: 'Deep Freeze', cost: 380, desc: 'Freezes 2 Layers Deep + Lead', apply: (t) => { t.damage += 1; t.canPopLead = true; } }],
           path2: [{ name: 'Enhanced Frost', cost: 160, desc: '+40% Range', apply: (t) => t.range *= 1.4 }, { name: 'Arctic Wind', cost: 750, desc: 'Massive freeze aura, fast rate', apply: (t) => { t.range *= 1.35; t.fireRate *= 1.4; } }],
           path3: [{ name: 'Snap Freeze', cost: 220, desc: 'Freezes bloons for 50% longer', apply: (t) => t.freezeDuration = 2.0 }, { name: 'Icicles', cost: 680, desc: 'Bloons grow sharp icicles', apply: (t) => t.damage += 2 }]
         }
       },
+      glue: {
+        name: 'Glue Gunner', icon: '🧪', category: 'primary', cost: 260, range: 115, fireRate: 1.0, projectileSpeed: 9, damage: 1, pierce: 1, color: '#eab308', isGlue: true,
+        upgrades: {
+          path1: [{ name: 'Corrosive Glue', cost: 240, desc: 'Glue dissolves 1 layer per sec', apply: (t) => { t.glueCorrosive = true; t.canPopLead = true; } }, { name: 'Bloon Dissolver', cost: 750, desc: 'Melts bloons 3x faster', apply: (t) => { t.glueCorrosive = true; t.glueDissolver = true; t.damage += 2; } }],
+          path2: [{ name: 'Bigger Globs', cost: 130, desc: 'Glue hits 3 bloons at once', apply: (t) => t.pierce += 2 }, { name: 'Glue Hose', cost: 480, desc: 'Super fast pressurized glue stream', apply: (t) => t.fireRate *= 2.2 }],
+          path3: [{ name: 'Stickier Glue', cost: 120, desc: 'Glue slow lasts 8 seconds', apply: (t) => t.glueDuration = 8.0 }, { name: 'MOAB Glue', cost: 850, desc: 'Sticky glue can slow MOAB blimps', apply: (t) => t.canSlowMoab = true }]
+        }
+      },
+
+      // ===== MILITARY CATEGORY (6) =====
       sniper: {
-        name: 'Sniper Monkey', icon: '🎯', cost: 400, range: 9999, fireRate: 0.45, damage: 3, pierce: 1, color: '#15803d', isSniper: true,
+        name: 'Sniper Monkey', icon: '🎯', category: 'military', cost: 400, range: 9999, fireRate: 0.45, damage: 3, pierce: 1, color: '#15803d', isSniper: true,
         upgrades: {
           path1: [{ name: 'Full Metal Jacket', cost: 250, desc: '+3 Dmg, Melts Lead & Ceramics', apply: (t) => { t.damage += 3; t.canPopLead = true; } }, { name: 'Deadly Precision', cost: 800, desc: 'Deals 20 Damage per shot', apply: (t) => t.damage += 14 }],
           path2: [{ name: 'Night Vision', cost: 180, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }, { name: 'Semi-Automatic', cost: 750, desc: '3x Faster Firing Speed', apply: (t) => t.fireRate *= 3.0 }],
           path3: [{ name: 'Fast Firing', cost: 200, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Shrapnel Shot', cost: 500, desc: 'Bursts into 5 shrapnel shards', apply: (t) => t.hasShrapnel = true }]
         }
       },
-      ninja: {
-        name: 'Ninja Monkey', icon: '🥷', cost: 480, range: 120, fireRate: 1.5, projectileSpeed: 11, damage: 1, pierce: 2, canSeeCamo: true, color: '#7f1d1d', isNinja: true,
-        upgrades: {
-          path1: [{ name: 'Ninja Discipline', cost: 220, desc: '+35% Attack Speed & Range', apply: (t) => { t.fireRate *= 1.35; t.range += 15; } }, { name: 'Sharp Shurikens', cost: 400, desc: '+3 Pierce per Shuriken', apply: (t) => t.pierce += 3 }],
-          path2: [{ name: 'Distraction', cost: 250, desc: 'Knocks bloons backward on hit', apply: (t) => t.knockback = true }, { name: 'Flash Bomb', cost: 750, desc: 'Throws stun bombs, pops Lead', apply: (t) => { t.hasFlashBomb = true; t.canPopLead = true; } }],
-          path3: [{ name: 'Seeking Shuriken', cost: 240, desc: 'Shurikens home in on Bloons', apply: (t) => t.isHoming = true }, { name: 'Double Shot', cost: 680, desc: 'Throws 2 Shurikens at once', apply: (t) => t.doubleShot = true }]
-        }
-      },
       buccaneer: {
-        name: 'Buccaneer', icon: '⛵', cost: 500, range: 130, fireRate: 1.0, projectileSpeed: 9, damage: 1, pierce: 3, color: '#0369a1', isWaterOnly: true, isShip: true,
+        name: 'Buccaneer', icon: '⛵', category: 'military', cost: 500, range: 130, fireRate: 1.0, projectileSpeed: 9, damage: 1, pierce: 3, color: '#0369a1', isWaterOnly: true, isShip: true,
         upgrades: {
           path1: [{ name: 'Faster Firing', cost: 200, desc: '+50% Cannons Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Cannon Ship', cost: 650, desc: 'Adds heavy explosive cannon', apply: (t) => { t.isExplosive = true; t.damage += 2; t.canPopLead = true; } }],
           path2: [{ name: 'Grape Shot', cost: 220, desc: 'Sprays 5 grape scatter pellets', apply: (t) => t.hasGrapes = true }, { name: 'Crow Nest', cost: 300, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }],
           path3: [{ name: 'Longer Cannons', cost: 180, desc: '+30% Range', apply: (t) => t.range *= 1.3 }, { name: 'Merchantman', cost: 800, desc: 'Generates +$250 cash per round', apply: (t) => t.incomeBonus = 250 }]
         }
       },
+      sub: {
+        name: 'Monkey Sub', icon: '🌊', category: 'military', cost: 420, range: 130, fireRate: 1.1, projectileSpeed: 9.5, damage: 1, pierce: 2, isWaterOnly: true, isHoming: true, color: '#0284c7', isSub: true,
+        upgrades: {
+          path1: [{ name: 'Longer Range', cost: 150, desc: '+35% Radar Range', apply: (t) => t.range *= 1.35 }, { name: 'Advanced Intel', cost: 600, desc: 'Attacks anywhere in range of any tower!', apply: (t) => { t.range = 9999; t.canSeeCamo = true; } }],
+          path2: [{ name: 'Barbed Darts', cost: 220, desc: '+3 Pierce', apply: (t) => t.pierce += 3 }, { name: 'Heat-tipped Darts', cost: 480, desc: 'Darts pop Lead Bloons', apply: (t) => t.canPopLead = true }],
+          path3: [{ name: 'Twin Guns', cost: 180, desc: '+40% Firing Rate', apply: (t) => t.fireRate *= 1.4 }, { name: 'Airburst Darts', cost: 720, desc: 'Darts burst into 3 sub-darts on contact', apply: (t) => { t.pierce += 3; t.damage += 1; } }]
+        }
+      },
+      ace: {
+        name: 'Monkey Ace', icon: '✈️', category: 'military', cost: 750, range: 9999, fireRate: 0.85, projectileSpeed: 9, damage: 1, pierce: 3, color: '#cbd5e1', isAce: true,
+        upgrades: {
+          path1: [{ name: 'Rapid Fire', cost: 220, desc: '+40% Attack Speed', apply: (t) => t.fireRate *= 1.4 }, { name: 'Sharper Darts', cost: 450, desc: '+4 Pierce per Dart', apply: (t) => t.pierce += 4 }],
+          path2: [{ name: 'Exploding Pineapple', cost: 260, desc: 'Drops road bombs that explode', apply: (t) => { t.hasBombs = true; t.canPopLead = true; } }, { name: 'Spy Plane', cost: 380, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }],
+          path3: [{ name: 'Radial Volley', cost: 200, desc: 'Fires 12 Darts in a circle', apply: (t) => t.radialCount = 12 }, { name: 'Neva-Miss Targeting', cost: 850, desc: 'All 12 darts home in on bloons', apply: (t) => { t.isHoming = true; t.damage += 1; } }]
+        }
+      },
+      heli: {
+        name: 'Heli Pilot', icon: '🚁', category: 'military', cost: 950, range: 9999, fireRate: 1.4, projectileSpeed: 10, damage: 1, pierce: 2, color: '#16a34a', isHeli: true,
+        upgrades: {
+          path1: [{ name: 'Quad Darts', cost: 350, desc: 'Fires 4 high-speed darts', apply: (t) => { t.pierce += 2; t.damage += 1; } }, { name: 'Pursuit', cost: 700, desc: 'Chopper flies to chase down bloons', apply: (t) => t.hasPursuit = true }],
+          path2: [{ name: 'Bigger Jets', cost: 220, desc: '+60% Flight Velocity', apply: (t) => t.flySpeedMultiplier = 1.6 }, { name: 'IFF Radar', cost: 400, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }],
+          path3: [{ name: 'Faster Firing', cost: 280, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Razor Rotors', cost: 900, desc: 'Spinning blades shred bloons & Lead', apply: (t) => { t.canPopLead = true; t.damage += 2; } }]
+        }
+      },
+      mortar: {
+        name: 'Mortar Monkey', icon: '💥', category: 'military', cost: 680, range: 9999, fireRate: 0.5, projectileSpeed: 6, damage: 2, splashRadius: 85, pierce: 20, isExplosive: true, canPopLead: true, color: '#334155', isMortar: true,
+        upgrades: {
+          path1: [{ name: 'Bigger Blast', cost: 300, desc: '+50% Blast Radius', apply: (t) => { t.splashRadius *= 1.5; t.damage += 1; } }, { name: 'Bloon Buster', cost: 800, desc: 'Deals triple damage to Ceramics', apply: (t) => t.damage += 3 }],
+          path2: [{ name: 'Faster Reload', cost: 240, desc: '+45% Attack Speed', apply: (t) => t.fireRate *= 1.45 }, { name: 'Rapid Reload', cost: 650, desc: '+80% Attack Speed', apply: (t) => t.fireRate *= 1.8 }],
+          path3: [{ name: 'Airburst Shells', cost: 250, desc: '+8 Pierce', apply: (t) => t.pierce += 8 }, { name: 'Signal Flare', cost: 750, desc: 'Artillery blast strips Camo status!', apply: (t) => { t.canSeeCamo = true; t.stripsCamo = true; } }]
+        }
+      },
+      dartling: {
+        name: 'Dartling Gunner', icon: '🔫', category: 'military', cost: 850, range: 9999, fireRate: 4.5, projectileSpeed: 12, damage: 1, pierce: 1, color: '#166534', isDartling: true,
+        upgrades: {
+          path1: [{ name: 'Focused Firing', cost: 250, desc: 'Tight accurate laser stream', apply: (t) => t.range *= 1.2 }, { name: 'Laser Cannon', cost: 1100, desc: 'Piercing lasers melt Lead Bloons', apply: (t) => { t.pierce += 4; t.canPopLead = true; t.isLaser = true; } }],
+          path2: [{ name: 'Faster Barrel Spin', cost: 300, desc: '+60% Attack Speed', apply: (t) => t.fireRate *= 1.6 }, { name: 'Hydra Rocket Pods', cost: 1300, desc: 'Fires rapid explosive rockets', apply: (t) => { t.isExplosive = true; t.splashRadius = 45; t.damage += 2; } }],
+          path3: [{ name: 'Powerful Darts', cost: 280, desc: '+3 Pierce', apply: (t) => t.pierce += 3 }, { name: 'Buckshot', cost: 950, desc: 'Shoots 6 heavy shrapnel pellets', apply: (t) => { t.damage += 2; t.pierce += 5; } }]
+        }
+      },
+
+      // ===== MAGIC CATEGORY (5) =====
+      ninja: {
+        name: 'Ninja Monkey', icon: '🥷', category: 'magic', cost: 480, range: 120, fireRate: 1.5, projectileSpeed: 11, damage: 1, pierce: 2, canSeeCamo: true, color: '#7f1d1d', isNinja: true,
+        upgrades: {
+          path1: [{ name: 'Ninja Discipline', cost: 220, desc: '+35% Attack Speed & Range', apply: (t) => { t.fireRate *= 1.35; t.range += 15; } }, { name: 'Sharp Shurikens', cost: 400, desc: '+3 Pierce per Shuriken', apply: (t) => t.pierce += 3 }],
+          path2: [{ name: 'Distraction', cost: 250, desc: 'Knocks bloons backward on hit', apply: (t) => t.knockback = true }, { name: 'Flash Bomb', cost: 750, desc: 'Throws stun bombs, pops Lead', apply: (t) => { t.hasFlashBomb = true; t.canPopLead = true; } }],
+          path3: [{ name: 'Seeking Shuriken', cost: 240, desc: 'Shurikens home in on Bloons', apply: (t) => t.isHoming = true }, { name: 'Double Shot', cost: 680, desc: 'Throws 2 Shurikens at once', apply: (t) => t.doubleShot = true }]
+        }
+      },
       wizard: {
-        name: 'Wizard Monkey', icon: '🧙', cost: 550, range: 135, fireRate: 1.0, projectileSpeed: 8.5, damage: 2, pierce: 3, isHoming: true, canPopLead: true, color: '#8b5cf6',
+        name: 'Wizard Monkey', icon: '🧙', category: 'magic', cost: 550, range: 135, fireRate: 1.0, projectileSpeed: 8.5, damage: 2, pierce: 3, isHoming: true, canPopLead: true, color: '#8b5cf6',
         upgrades: {
           path1: [{ name: 'Arcane Blast', cost: 300, desc: '+2 Damage per shot', apply: (t) => t.damage += 2 }, { name: 'Arcane Mastery', cost: 800, desc: 'Huge Speed, +4 Damage', apply: (t) => { t.damage += 4; t.fireRate *= 1.5; } }],
           path2: [{ name: 'Fireball', cost: 320, desc: 'Heavy Explosive Impact', apply: (t) => { t.hasFireball = true; t.splashRadius = 60; } }, { name: 'Wall of Fire', cost: 700, desc: 'Blazing wall that melts Lead', apply: (t) => t.damage += 3 }],
@@ -1513,11 +1616,69 @@
         }
       },
       super: {
-        name: 'Super Monkey', icon: '🦸', cost: 1400, range: 160, fireRate: 7.0, projectileSpeed: 13, damage: 1, pierce: 2, color: '#f59e0b', isSuper: true,
+        name: 'Super Monkey', icon: '🦸', category: 'magic', cost: 1400, range: 160, fireRate: 7.0, projectileSpeed: 13, damage: 1, pierce: 2, color: '#f59e0b', isSuper: true,
         upgrades: {
           path1: [{ name: 'Laser Blasts', cost: 950, desc: 'Pops Frozen Bloons & +2 Pierce', apply: (t) => { t.pierce += 2; t.isLaser = true; } }, { name: 'Plasma Blasts', cost: 1700, desc: 'Double Speed & Melts Lead', apply: (t) => { t.fireRate *= 1.6; t.damage += 1; t.canPopLead = true; } }],
           path2: [{ name: 'Super Range', cost: 650, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Epic Darts', cost: 1100, desc: '+4 Pierce & Hyperspeed', apply: (t) => { t.pierce += 4; t.projectileSpeed *= 1.3; } }],
           path3: [{ name: 'Ultravision', cost: 700, desc: 'Super Camo Detection visor', apply: (t) => t.canSeeCamo = true }, { name: 'Dark Knight', cost: 2400, desc: 'Teleports, Blades pop Moabs', apply: (t) => { t.damage += 3; t.moabMultiplier = 3; } }]
+        }
+      },
+      alchemist: {
+        name: 'Alchemist', icon: '⚗️', category: 'magic', cost: 620, range: 120, fireRate: 0.8, projectileSpeed: 8, damage: 2, splashRadius: 55, pierce: 10, isExplosive: true, canPopLead: true, color: '#a855f7', isAlchemist: true,
+        upgrades: {
+          path1: [{ name: 'Larger Potions', cost: 250, desc: '+40% Potion Splash Radius', apply: (t) => t.splashRadius *= 1.4 }, { name: 'Berserker Brew', cost: 900, desc: 'Buffs adjacent allies: +1 Dmg, +20% Speed', apply: (t) => t.hasBuffAura = true }],
+          path2: [{ name: 'Stronger Acid', cost: 220, desc: '+2 Potion Damage', apply: (t) => t.damage += 2 }, { name: 'Acidic Mixture Dip', cost: 450, desc: 'Grants nearby allies ability to pop Lead', apply: (t) => t.buffsLeadPopping = true }],
+          path3: [{ name: 'Faster Throwing', cost: 180, desc: '+40% Attack Speed', apply: (t) => t.fireRate *= 1.4 }, { name: 'Lead to Gold', cost: 800, desc: 'Turn Lead Bloons into gold ($50 bonus)', apply: (t) => t.leadToGold = true }]
+        }
+      },
+      druid: {
+        name: 'Druid', icon: '🌿', category: 'magic', cost: 400, range: 125, fireRate: 0.95, projectileSpeed: 9, damage: 1, pierce: 1, color: '#047857', isDruid: true,
+        upgrades: {
+          path1: [{ name: 'Hard Thorns', cost: 200, desc: 'Thorns pop Lead & Frozen Bloons', apply: (t) => t.canPopLead = true }, { name: 'Heart of Thunder', cost: 750, desc: 'Fires chain lightning bouncing to 6 bloons', apply: (t) => { t.hasLightning = true; t.damage += 2; } }],
+          path2: [{ name: 'Thorn Swarm', cost: 180, desc: 'Throws 8 thorns in a spread cone', apply: (t) => t.thornCount = 8 }, { name: 'Heart of Oak', cost: 400, desc: 'De-regrows bloons permanently', apply: (t) => t.stripsRegrow = true }],
+          path3: [{ name: 'Druidic Reach', cost: 150, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Druid of the Jungle', cost: 800, desc: 'Vines ensnare and crush bloons instantly', apply: (t) => { t.damage += 3; t.pierce += 4; } }]
+        }
+      },
+
+      // ===== SUPPORT CATEGORY (6) =====
+      farm: {
+        name: 'Banana Farm', icon: '🍌', category: 'support', cost: 850, range: 80, fireRate: 0, damage: 0, color: '#eab308', isFarm: true, incomeBonus: 160,
+        upgrades: {
+          path1: [{ name: 'More Bananas', cost: 400, desc: '+$140 cash per round ($300 total)', apply: (t) => t.incomeBonus += 140 }, { name: 'Banana Plantation', cost: 1200, desc: '+$350 cash per round ($650 total)', apply: (t) => t.incomeBonus += 350 }],
+          path2: [{ name: 'Salvation Crates', cost: 280, desc: 'Automatic cash collection', apply: (t) => t.autoCollect = true }, { name: 'Banana Bank', cost: 1100, desc: 'Generates extra 10% compound dividend', apply: (t) => t.incomeBonus += 250 }],
+          path3: [{ name: 'EZ Collect', cost: 220, desc: '+$80 cash per round', apply: (t) => t.incomeBonus += 80 }, { name: 'Marketplace', cost: 1400, desc: 'Huge shipping market: +$450/round', apply: (t) => t.incomeBonus += 450 }]
+        }
+      },
+      spikes: {
+        name: 'Spike Factory', icon: '⚙️', category: 'support', cost: 650, range: 110, fireRate: 0.5, damage: 1, color: '#64748b', isSpikes: true,
+        upgrades: {
+          path1: [{ name: 'Bigger Stacks', cost: 250, desc: '+5 spikes per pile', apply: (t) => t.spikePileSize = (t.spikePileSize || 5) + 5 }, { name: 'White Hot Spikes', cost: 550, desc: 'Spikes pop Lead Bloons', apply: (t) => t.canPopLead = true }],
+          path2: [{ name: 'Faster Production', cost: 280, desc: '+50% Spike Production Rate', apply: (t) => t.fireRate *= 1.5 }, { name: 'Even Faster Production', cost: 600, desc: '+80% Spike Production Rate', apply: (t) => t.fireRate *= 1.8 }],
+          path3: [{ name: 'Long Reach', cost: 180, desc: '+40% Placement Radius', apply: (t) => t.range *= 1.4 }, { name: 'Spike Storm', cost: 950, desc: 'Each pile has 20 spikes and deals 2 damage', apply: (t) => { t.damage += 1; t.spikePileSize = 20; } }]
+        }
+      },
+      village: {
+        name: 'Monkey Village', icon: '🛖', category: 'support', cost: 700, range: 130, fireRate: 0, damage: 0, color: '#b45309', isVillage: true,
+        upgrades: {
+          path1: [{ name: 'Bigger Radius', cost: 220, desc: '+35% Aura Radius', apply: (t) => t.range *= 1.35 }, { name: 'Jungle Drums', cost: 650, desc: 'Grants +20% Attack Speed to all nearby towers', apply: (t) => t.drumsBuff = true }],
+          path2: [{ name: 'Grow Blocker', cost: 200, desc: 'Stops regrow bloons from multiplying', apply: (t) => t.blockGrow = true }, { name: 'Radar Scanner', cost: 750, desc: 'Grants Camo detection to ALL towers in radius', apply: (t) => t.grantsCamo = true }],
+          path3: [{ name: 'Monkey Business', cost: 300, desc: '-15% discount on all upgrades in aura', apply: (t) => t.discountPercent = 15 }, { name: 'Monkey Commerce', cost: 600, desc: '-25% total discount on all upgrades in aura', apply: (t) => t.discountPercent = 25 }]
+        }
+      },
+      engineer: {
+        name: 'Engineer Monkey', icon: '🔧', category: 'support', cost: 450, range: 120, fireRate: 1.1, projectileSpeed: 9.5, damage: 1, pierce: 3, color: '#f59e0b', isEngineer: true,
+        upgrades: {
+          path1: [{ name: 'Sentry Gun', cost: 320, desc: 'Constructs automated Sentry Turrets on track', apply: (t) => t.hasSentries = true }, { name: 'Sentry Expert', cost: 850, desc: 'Sentries fire high-speed plasma & pop Lead', apply: (t) => { t.sentryExpert = true; t.canPopLead = true; } }],
+          path2: [{ name: 'Faster Engineering', cost: 220, desc: '+50% Attack & Construction Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Cleansing Foam', cost: 550, desc: 'Nails strip Camo & Regrow properties', apply: (t) => { t.stripsCamo = true; t.canSeeCamo = true; } }],
+          path3: [{ name: 'Larger Service Area', cost: 180, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Pin', cost: 450, desc: 'Nails pin and freeze bloons briefly', apply: (t) => t.pinsBloons = true }]
+        }
+      },
+      beast: {
+        name: 'Beast Handler', icon: '🦕', category: 'support', cost: 580, range: 135, fireRate: 0.9, projectileSpeed: 10, damage: 2, pierce: 3, color: '#d97706', isBeast: true,
+        upgrades: {
+          path1: [{ name: 'Microraptor', cost: 280, desc: 'Fast hunting raptor lunges at bloons', apply: (t) => { t.damage += 1; t.fireRate *= 1.3; } }, { name: 'Velociraptor', cost: 850, desc: 'Heavy raptor deals 5 damage & shreds blimps', apply: (t) => { t.damage += 3; t.canPopLead = true; t.moabMultiplier = 3; } }],
+          path2: [{ name: 'Piranha Swarm', cost: 240, desc: 'Aquatic beasts bite in wide radius', apply: (t) => t.pierce += 4 }, { name: 'Great White', cost: 900, desc: 'Massive shark bites bloons for huge damage', apply: (t) => t.damage += 4 }],
+          path3: [{ name: 'Gyrfalcon', cost: 220, desc: 'Aerial raptor dive-bombs bloons', apply: (t) => t.range *= 1.4 }, { name: 'Horned Owl', cost: 700, desc: 'Carries bloons backwards away from exit', apply: (t) => { t.knockback = true; t.canSeeCamo = true; } }]
         }
       }
     };
@@ -1539,9 +1700,11 @@
     let particles = [];
     let floatingTexts = [];
     let waveSpawns = [];
+    let roadTraps = []; // Persistent spike piles & traps
 
     let selectedTowerKey = null;
     let inspectedTower = null;
+    let selectedCategory = 'all';
     let mouse = { x: 0, y: 0 };
     let coopTimer = 0;
 
@@ -1575,25 +1738,48 @@
     let wsConnection = null;
 
     // --- 6. Controls & Setup ---
+    function filterTowerCategory(cat) {
+      selectedCategory = cat;
+      ['all', 'primary', 'military', 'magic', 'support'].forEach(c => {
+        const btn = document.getElementById(`cat-tab-${c}`);
+        if (btn) btn.classList.toggle('active', c === cat);
+      });
+      buildStoreUI();
+      updateUI();
+    }
+
     function buildStoreUI() {
       const container = document.getElementById('towers-container');
       container.innerHTML = '';
       const keys = Object.keys(TOWER_SPECS);
-      keys.forEach((key, index) => {
+      const filteredKeys = selectedCategory === 'all' 
+        ? keys 
+        : keys.filter(k => TOWER_SPECS[k].category === selectedCategory);
+
+      filteredKeys.forEach((key, index) => {
         const spec = TOWER_SPECS[key];
         const btn = document.createElement('button');
         btn.className = 'tower-btn';
         btn.id = `btn-tower-${key}`;
         btn.onclick = () => selectTower(key);
 
-        const hotkey = index === 9 ? '0' : `${index + 1}`;
+        const hotkey = index < 9 ? `${index + 1}` : (index === 9 ? '0' : '');
+        const hotkeyHtml = hotkey ? `<span class="hotkey-badge">${hotkey}</span>` : '';
+        const waterBadge = spec.isWaterOnly ? `<span class="water-badge">WATER</span>` : '';
+
         btn.innerHTML = `
-          <span class="hotkey-badge">${hotkey}</span>
-          <div class="tower-title">${spec.icon} ${spec.name}</div>
+          ${hotkeyHtml}
+          <div class="tower-title">${spec.icon} ${spec.name} ${waterBadge}</div>
           <div class="tower-cost">$${spec.cost}</div>
         `;
         container.appendChild(btn);
       });
+
+      const headingEl = document.getElementById('towers-heading');
+      if (headingEl) {
+        const catName = selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1);
+        headingEl.textContent = `Deploy (${filteredKeys.length} ${catName})`;
+      }
     }
     buildStoreUI();
 
@@ -1672,9 +1858,11 @@
     // Keyboard Hotkeys
     window.addEventListener('keydown', (e) => {
       const num = parseInt(e.key);
-      const keys = Object.keys(TOWER_SPECS);
-      if (num >= 1 && num <= 9) selectTower(keys[num - 1]);
-      if (e.key === '0') selectTower(keys[9]);
+      const keys = selectedCategory === 'all' 
+        ? Object.keys(TOWER_SPECS) 
+        : Object.keys(TOWER_SPECS).filter(k => TOWER_SPECS[k].category === selectedCategory);
+      if (num >= 1 && num <= 9 && keys[num - 1]) selectTower(keys[num - 1]);
+      if (e.key === '0' && keys[9]) selectTower(keys[9]);
       if (e.key === ' ') { e.preventDefault(); triggerNextWave(); }
       if (e.key === 'Tab') { e.preventDefault(); cycleGameSpeed(); }
       if (e.key === 'Escape') { selectTower(null); inspectTower(null); }
@@ -1708,7 +1896,7 @@
         if (distToSegment({x, y}, seg.p1, seg.p2) < 34 + r) return false;
       }
 
-      // Water check (Buccaneer MUST be in water; other towers CANNOT be in water!)
+      // Water check (Buccaneer & Sub MUST be in water; other towers CANNOT be in water!)
       const normX = (x - POND.x) / (POND.rx - 8);
       const normY = (y - POND.y) / (POND.ry - 8);
       const inPond = (normX*normX + normY*normY) < 1.0;
@@ -1719,7 +1907,7 @@
 
       // Other towers collision
       for (const t of towers) {
-        if (Math.hypot(t.x - x, t.y - y) < 40) return false;
+        if (Math.hypot(t.x - x, t.y - y) < 38) return false;
       }
       return true;
     }
@@ -1743,8 +1931,15 @@
         isExplosive: !!s.isExplosive, isAoePulse: !!s.isAoePulse, isHoming: !!s.isHoming,
         canPopLead: !!s.canPopLead, canSeeCamo: !!s.canSeeCamo, isBoomerang: !!s.isBoomerang,
         isSniper: !!s.isSniper, isTack: !!s.isTack, tackCount: 8, color: s.color,
+        isGlue: !!s.isGlue, isSub: !!s.isSub, isAce: !!s.isAce, isHeli: !!s.isHeli,
+        isMortar: !!s.isMortar, isDartling: !!s.isDartling, isAlchemist: !!s.isAlchemist,
+        isDruid: !!s.isDruid, isFarm: !!s.isFarm, isSpikes: !!s.isSpikes, isVillage: !!s.isVillage,
+        isEngineer: !!s.isEngineer, isBeast: !!s.isBeast,
+        incomeBonus: s.incomeBonus || 0, spikePileSize: s.spikePileSize || 5,
         totalCost: s.cost, pops: 0, cooldown: 0, targetPriority: 'first',
-        p1Tier: 0, p2Tier: 0, p3Tier: 0
+        p1Tier: 0, p2Tier: 0, p3Tier: 0,
+        // Aerial unit dynamic position & orbit state
+        curX: x, curY: y, aceAngle: Math.random() * Math.PI * 2, heliTargetX: x, heliTargetY: y
       };
     }
 
@@ -1776,15 +1971,23 @@
         const btn = document.getElementById(`p${p}-btn`);
 
         if (upg) {
+          let discountMult = 1.0;
+          for (const vt of towers) {
+            if (vt.isVillage && vt.discountPercent && Math.hypot(vt.x - t.x, vt.y - t.y) <= vt.range) {
+              discountMult = Math.min(discountMult, (100 - vt.discountPercent) / 100);
+            }
+          }
+          const effCost = Math.round(upg.cost * discountMult);
+
           nameEl.textContent = upg.name;
-          costEl.textContent = `$${upg.cost}`;
+          costEl.textContent = discountMult < 1.0 ? `$${effCost} (-${Math.round((1-discountMult)*100)}%)` : `$${effCost}`;
           descEl.textContent = upg.desc;
           if (!isMyTower) {
             btn.textContent = `Teammate's Tower`;
             btn.disabled = true;
           } else {
-            btn.textContent = `Buy ($${upg.cost})`;
-            btn.disabled = cash < upg.cost;
+            btn.textContent = `Buy ($${effCost})`;
+            btn.disabled = cash < effCost;
           }
         } else {
           nameEl.textContent = `Path ${p} MAXED`;
@@ -1817,9 +2020,19 @@
       const upgList = spec.upgrades[`path${pathNum}`];
       if (inspectedTower[tierKey] < upgList.length) {
         const upg = upgList[inspectedTower[tierKey]];
-        if (cash >= upg.cost || fromNet) {
-          if (!fromNet) cash -= upg.cost;
-          inspectedTower.totalCost += upg.cost;
+        
+        // Check for Village discount aura on this tower
+        let discountMult = 1.0;
+        for (const vt of towers) {
+          if (vt.isVillage && vt.discountPercent && Math.hypot(vt.x - inspectedTower.x, vt.y - inspectedTower.y) <= vt.range) {
+            discountMult = Math.min(discountMult, (100 - vt.discountPercent) / 100);
+          }
+        }
+        const effCost = Math.round(upg.cost * discountMult);
+
+        if (cash >= effCost || fromNet) {
+          if (!fromNet) cash -= effCost;
+          inspectedTower.totalCost += effCost;
           upg.apply(inspectedTower);
           inspectedTower[tierKey]++;
           playSfx('magic');
@@ -2056,7 +2269,7 @@
         isWaveActive = false;
         let clearBonus = 120 + currentRound * 20;
         
-        // Merchantman income bonus from Buccaneers
+        // Merchantman income bonus from Buccaneers & Banana Farm payouts
         for (const t of towers) {
           if (t.incomeBonus) clearBonus += t.incomeBonus;
         }
@@ -2094,21 +2307,57 @@
         }
       }
 
-      // 3. Bloons Movement & Status
+      // 3. Bloons Movement, Status Effects & Road Trap Collisions
       for (let i = bloons.length - 1; i >= 0; i--) {
         const b = bloons[i];
+
+        // Process Glue & Dissolver DoT
+        if (b.glueTimer > 0) {
+          b.glueTimer -= dt;
+          if (b.glueCorrosive) {
+            b.corrosiveTick = (b.corrosiveTick || 0) + dt;
+            const tickRate = b.glueDissolver ? 0.35 : 1.0;
+            if (b.corrosiveTick >= tickRate) {
+              b.corrosiveTick = 0;
+              b.hp -= 1;
+              spawnPopParticles(b.x, b.y, '#eab308');
+              if (b.hp <= 0) {
+                damageBloon(b, 0, { pops: 0, canPopLead: true });
+                continue;
+              }
+            }
+          }
+        }
 
         if (b.freezeTimer > 0) {
           b.freezeTimer -= dt;
         } else {
           const speedMult = DIFFICULTY_CONFIG[currentDifficulty]?.bloonSpeedMult || 1.0;
-          const effSpeed = (b.permafrostSlow ? b.speed * 0.6 : b.speed) * speedMult;
+          let effSpeed = (b.permafrostSlow ? b.speed * 0.6 : b.speed) * speedMult;
+          if (b.glueTimer > 0 && (!b.isMoab || b.gluedMoab)) {
+            effSpeed *= 0.5; // Sticky Glue 50% slow
+          }
           b.distance += effSpeed * 85 * dt;
         }
 
         const pos = getPositionOnPath(b.distance);
         b.x = pos.x;
         b.y = pos.y;
+
+        // Check collision with Spike Factory Road Traps
+        for (let sIdx = roadTraps.length - 1; sIdx >= 0; sIdx--) {
+          const trap = roadTraps[sIdx];
+          if (Math.hypot(b.x - trap.x, b.y - trap.y) <= (b.radius + 12)) {
+            if (b.isLead && !trap.canPopLead) continue;
+            damageBloon(b, trap.damage || 1, trap.tower);
+            trap.spikesLeft -= 1;
+            if (trap.spikesLeft <= 0) {
+              roadTraps.splice(sIdx, 1);
+            }
+            if (b.hp <= 0) break;
+          }
+        }
+        if (b.hp <= 0) continue;
 
         // Leaked bloon reached exit
         if (b.distance >= totalPathLength) {
@@ -2126,18 +2375,94 @@
         }
       }
 
-      // 4. Tower Targeting & Weapon Aim with Predictive Target Leading!
+      // 4. Tower Targeting, Buff Auras & Attack Execution
       for (const t of towers) {
+        // Calculate Village Auras & Alchemist Brew Buffs
+        let drumsBuff = false;
+        let villageCamo = false;
+        for (const vt of towers) {
+          if (vt.id === t.id) continue;
+          if (vt.isVillage && Math.hypot(vt.x - t.x, vt.y - t.y) <= vt.range) {
+            if (vt.drumsBuff) drumsBuff = true;
+            if (vt.grantsCamo) villageCamo = true;
+          }
+          if (vt.isAlchemist && vt.hasBuffAura && Math.hypot(vt.x - t.x, vt.y - t.y) <= vt.range) {
+            drumsBuff = true; // Berserker Brew attack rate boost
+          }
+        }
+        t.hasVillageCamo = villageCamo;
+        const effectiveFireRate = t.fireRate * (drumsBuff ? 1.2 : 1.0);
+
+        // Update Aerial Unit Flight Paths (Ace & Heli)
+        if (t.isAce) {
+          t.aceAngle = (t.aceAngle || 0) + 1.2 * dt;
+          // Figure-8 flight pattern
+          t.curX = t.x + Math.sin(t.aceAngle) * 85;
+          t.curY = t.y + Math.sin(t.aceAngle * 2) * 45;
+          t.angle = t.aceAngle;
+        } else if (t.isHeli) {
+          // Autonomous pursuit or orbit around helipad
+          const speed = (t.flySpeedMultiplier || 1.0) * 160 * dt;
+          if (t.hasPursuit && bloons.length > 0) {
+            const firstB = bloons[0];
+            const dx = firstB.x - t.curX;
+            const dy = firstB.y - t.curY;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 50) {
+              t.curX += (dx / dist) * speed;
+              t.curY += (dy / dist) * speed;
+            }
+            t.angle = Math.atan2(dy, dx);
+          } else {
+            // Hover near base
+            t.curX += (t.x - t.curX) * 0.05;
+            t.curY += (t.y - t.curY) * 0.05;
+          }
+        }
+
+        // Support Passive Production (Spike Factory & Engineer Sentry)
+        if (t.isSpikes) {
+          t.cooldown -= dt;
+          if (t.cooldown <= 0) {
+            t.cooldown = 1 / Math.max(0.2, effectiveFireRate);
+            // Drop spikes on nearest path segment
+            let bestSeg = null;
+            let minDist = 9999;
+            for (const seg of pathSegments) {
+              const d = distToSegment({ x: t.x, y: t.y }, seg.p1, seg.p2);
+              if (d < minDist && d <= t.range) {
+                minDist = d;
+                bestSeg = seg;
+              }
+            }
+            if (bestSeg) {
+              const rPos = getPositionOnPath(bestSeg.startDist + Math.random() * bestSeg.len);
+              roadTraps.push({
+                x: rPos.x + (Math.random() - 0.5) * 14,
+                y: rPos.y + (Math.random() - 0.5) * 14,
+                spikesLeft: t.spikePileSize || 5,
+                damage: t.damage || 1,
+                canPopLead: !!t.canPopLead,
+                tower: t
+              });
+              playSfx('dart');
+            }
+          }
+          continue;
+        }
+
+        if (t.isFarm || t.isVillage) continue; // Passive non-attackers
+
+        // Active Attackers Targeting
         t.cooldown -= dt;
         const target = acquireTarget(t);
         if (target) {
-          // Calculate where the bloon WILL BE by the time the projectile arrives
           const leadPos = calculateLeadPosition(t, target);
-          t.angle = Math.atan2(leadPos.y - t.y, leadPos.x - t.x);
+          t.angle = Math.atan2(leadPos.y - (t.curY || t.y), leadPos.x - (t.curX || t.x));
 
           if (t.cooldown <= 0) {
             fireTower(t, target, leadPos);
-            t.cooldown = 1 / t.fireRate;
+            t.cooldown = 1 / Math.max(0.1, effectiveFireRate);
           }
         }
       }
@@ -2153,8 +2478,7 @@
           p.x = p.originX + Math.cos(p.angle) * Math.sin(p.theta) * 110 + Math.cos(p.theta) * 35;
           p.y = p.originY + Math.sin(p.angle) * Math.sin(p.theta) * 110 + Math.sin(p.theta) * 35;
         } else {
-          // Predictive / Smart Steering Assist:
-          // Gently steers projectiles towards target when close to prevent near-misses
+          // Smart steering for homing projectiles (Sub, Ninja, Ace, Wizard)
           if (p.target && bloons.includes(p.target)) {
             const dx = p.target.x - p.x;
             const dy = p.target.y - p.y;
@@ -2167,7 +2491,7 @@
               while (diff < -Math.PI) diff += Math.PI * 2;
               while (diff > Math.PI) diff -= Math.PI * 2;
 
-              const steerPower = p.isHoming ? 0.45 : 0.15; // Smooth assist
+              const steerPower = p.isHoming ? 0.45 : 0.15;
               const newAngle = curAngle + diff * steerPower;
               const spd = p.speed || 380;
               p.vx = Math.cos(newAngle) * spd;
@@ -2188,12 +2512,24 @@
             p.hitBloonIds.add(b.id);
             damageBloon(b, p.damage, p.tower, p.isExplosive);
 
+            // Special on-hit properties
+            if (p.isGlueBlob) {
+              b.glueTimer = p.tower.glueDuration || 5.0;
+              b.glueCorrosive = !!p.tower.glueCorrosive;
+              b.glueDissolver = !!p.tower.glueDissolver;
+              b.gluedMoab = !!p.tower.canSlowMoab;
+            }
+            if (p.tower && p.tower.stripsCamo) {
+              b.isCamo = false;
+            }
+
             if (p.isExplosive) {
               playSfx('bomb');
               spawnExplosion(p.x, p.y, p.splashRadius);
               for (const other of bloons) {
                 if (other.id !== b.id && Math.hypot(p.x - other.x, p.y - other.y) <= p.splashRadius) {
                   damageBloon(other, p.damage, p.tower, true);
+                  if (p.tower && p.tower.stripsCamo) other.isCamo = false;
                 }
               }
               p.pierce = 0;
@@ -2236,7 +2572,7 @@
         color: spec.color, isMoab: !!spec.isMoab, isBfb: !!spec.isBfb, isZomg: !!spec.isZomg,
         isCeramic: !!spec.isCeramic, isLead: !!spec.isLead, isPurple: !!spec.isImmuneEnergy,
         isImmuneExplosion: !!spec.isImmuneExplosion, isImmuneFreeze: !!spec.isImmuneFreeze,
-        freezeTimer: 0, permafrostSlow: false
+        freezeTimer: 0, permafrostSlow: false, glueTimer: 0, glueCorrosive: false, glueDissolver: false
       });
     }
 
@@ -2256,9 +2592,15 @@
       if (b.isMoab && tower.moabMultiplier) effDmg *= tower.moabMultiplier;
 
       b.hp -= effDmg;
-      tower.pops += effDmg;
+      tower.pops = (tower.pops || 0) + effDmg;
       spawnPopParticles(b.x, b.y, b.color);
       playSfx('pop');
+
+      // Lead to Gold reward
+      if (b.isLead && tower.leadToGold) {
+        cash += 50;
+        createFloatingText(b.x, b.y - 20, `+$50 Gold!`, '#facc15');
+      }
 
       if (b.hp <= 0) {
         cash += BLOON_TYPES[b.typeKey].reward;
@@ -2279,8 +2621,13 @@
     }
 
     function acquireTarget(t) {
+      const originX = t.curX !== undefined ? t.curX : t.x;
+      const originY = t.curY !== undefined ? t.curY : t.y;
+
       const inRange = bloons.filter(b => {
-        if (t.range < 5000 && Math.hypot(b.x - t.x, b.y - t.y) > t.range) return false;
+        if (t.range < 5000 && Math.hypot(b.x - originX, b.y - originY) > t.range) return false;
+        // Camo check (Tower natural camo, or Village camo aura)
+        if (b.isCamo && !t.canSeeCamo && !t.hasVillageCamo) return false;
         return true;
       });
       if (inRange.length === 0) return null;
@@ -2289,7 +2636,7 @@
       if (t.targetPriority === 'last') return inRange.reduce((p, c) => c.distance < p.distance ? c : p);
       if (t.targetPriority === 'strong') return inRange.reduce((p, c) => c.hp > p.hp ? c : p);
       if (t.targetPriority === 'close') {
-        return inRange.reduce((p, c) => Math.hypot(c.x - t.x, c.y - t.y) < Math.hypot(p.x - t.x, p.y - t.y) ? c : p);
+        return inRange.reduce((p, c) => Math.hypot(c.x - originX, c.y - originY) < Math.hypot(p.x - originX, p.y - originY) ? c : p);
       }
       return inRange[0];
     }
@@ -2300,8 +2647,10 @@
         return { x: target.x, y: target.y };
       }
 
+      const originX = t.curX !== undefined ? t.curX : t.x;
+      const originY = t.curY !== undefined ? t.curY : t.y;
       const projSpeed = (t.projectileSpeed || 8) * 40;
-      const dist = Math.hypot(target.x - t.x, target.y - t.y);
+      const dist = Math.hypot(target.x - originX, target.y - originY);
       const timeToHit = dist / projSpeed;
 
       const targetSpeed = (target.freezeTimer > 0 ? 0 : (target.permafrostSlow ? target.speed * 0.6 : target.speed)) * 85;
@@ -2309,7 +2658,7 @@
 
       // Refinement pass for curved tracks
       const futurePos1 = getPositionOnPath(futureDistance);
-      const dist2 = Math.hypot(futurePos1.x - t.x, futurePos1.y - t.y);
+      const dist2 = Math.hypot(futurePos1.x - originX, futurePos1.y - originY);
       const timeToHit2 = dist2 / projSpeed;
       const finalFutureDist = Math.min(totalPathLength, target.distance + targetSpeed * timeToHit2);
 
@@ -2317,26 +2666,29 @@
     }
 
     function fireTower(t, target, leadPos) {
-      // 1. Tack Shooter
+      const originX = t.curX !== undefined ? t.curX : t.x;
+      const originY = t.curY !== undefined ? t.curY : t.y;
+
+      // 1. Tack Shooter (Radial 360)
       if (t.isTack) {
         playSfx('dart');
         const count = t.tackCount || 8;
         for (let i = 0; i < count; i++) {
           const ang = (Math.PI * 2 / count) * i;
           projectiles.push({
-            x: t.x, y: t.y, vx: Math.cos(ang) * 320, vy: Math.sin(ang) * 320,
+            x: originX, y: originY, vx: Math.cos(ang) * 320, vy: Math.sin(ang) * 320,
             radius: 4, life: 0.3, damage: t.damage, pierce: t.pierce, tower: t, hitBloonIds: new Set()
           });
         }
         return;
       }
 
-      // 2. Ice Monkey
+      // 2. Ice Monkey (Radial Freeze Burst)
       if (t.isAoePulse) {
         playSfx('freeze');
-        spawnFreezeParticles(t.x, t.y, t.range);
+        spawnFreezeParticles(originX, originY, t.range);
         for (const b of bloons) {
-          if (Math.hypot(b.x - t.x, b.y - t.y) <= t.range) {
+          if (Math.hypot(b.x - originX, b.y - originY) <= t.range) {
             if (!b.isImmuneFreeze && !b.isMoab) {
               b.freezeTimer = t.freezeDuration || 1.3;
               if (t.permafrost) b.permafrostSlow = true;
@@ -2351,37 +2703,110 @@
       if (t.isSniper) {
         playSfx('sniper');
         damageBloon(target, t.damage, t, false);
-        // Draw laser sniper beam tracer
         particles.push({
-          x: t.x, y: t.y, targetX: target.x, targetY: target.y,
+          x: originX, y: originY, targetX: target.x, targetY: target.y,
           life: 0.12, isBeam: true, color: '#facc15'
         });
         return;
       }
 
-      // 4. Boomerang Monkey
+      // 4. Boomerang Monkey (Returning Arc)
       if (t.isBoomerang) {
         playSfx('dart');
         projectiles.push({
-          x: t.x, y: t.y, originX: t.x, originY: t.y, angle: t.angle,
+          x: originX, y: originY, originX: originX, originY: originY, angle: t.angle,
           radius: 6, life: 1.0, damage: t.damage, pierce: t.pierce,
           isBoomerang: true, tower: t, hitBloonIds: new Set()
         });
         return;
       }
 
-      // 5. Standard / Wizard / Super / Bomb / Buccaneer Projectile
-      const spd = t.projectileSpeed * 40;
+      // 5. Mortar Monkey (High Artillery Strike Anywhere)
+      if (t.isMortar) {
+        playSfx('bomb');
+        spawnExplosion(target.x, target.y, t.splashRadius);
+        for (const other of bloons) {
+          if (Math.hypot(other.x - target.x, other.y - target.y) <= t.splashRadius) {
+            damageBloon(other, t.damage, t, true);
+            if (t.stripsCamo) other.isCamo = false;
+          }
+        }
+        return;
+      }
+
+      // 6. Glue Gunner (Sticky Blob)
+      if (t.isGlue) {
+        playSfx('dart');
+        projectiles.push({
+          x: originX, y: originY,
+          vx: Math.cos(t.angle) * 380, vy: Math.sin(t.angle) * 380, speed: 380,
+          radius: 6, life: 1.8, damage: t.damage, pierce: t.pierce,
+          isGlueBlob: true, target: target, tower: t, hitBloonIds: new Set()
+        });
+        return;
+      }
+
+      // 7. Monkey Ace (Radial 8-12 Darts + Bombs)
+      if (t.isAce) {
+        playSfx('dart');
+        const count = t.radialCount || 8;
+        for (let i = 0; i < count; i++) {
+          const ang = (Math.PI * 2 / count) * i;
+          projectiles.push({
+            x: originX, y: originY, vx: Math.cos(ang) * 360, vy: Math.sin(ang) * 360, speed: 360,
+            radius: 4.5, life: 2.5, damage: t.damage, pierce: t.pierce,
+            isHoming: !!t.isHoming, target: target, tower: t, hitBloonIds: new Set()
+          });
+        }
+        if (t.hasBombs) {
+          spawnExplosion(originX, originY, 40);
+          for (const other of bloons) {
+            if (Math.hypot(other.x - originX, other.y - originY) <= 50) {
+              damageBloon(other, 2, t, true);
+            }
+          }
+        }
+        return;
+      }
+
+      // 8. Druid (Multi-Thorn Cone Burst)
+      if (t.isDruid) {
+        playSfx('dart');
+        const tCount = t.thornCount || 5;
+        const spread = 0.5;
+        for (let i = 0; i < tCount; i++) {
+          const off = (i - (tCount - 1) / 2) * (spread / tCount);
+          const ang = t.angle + off;
+          projectiles.push({
+            x: originX, y: originY, vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380, speed: 380,
+            radius: 4, life: 1.4, damage: t.damage, pierce: t.pierce, tower: t, hitBloonIds: new Set()
+          });
+        }
+        if (t.hasLightning && bloons.length > 0) {
+          // Chain lightning to up to 6 bloons
+          let prev = { x: originX, y: originY };
+          const struck = bloons.slice(0, 6);
+          for (const sb of struck) {
+            particles.push({ x: prev.x, y: prev.y, targetX: sb.x, targetY: sb.y, life: 0.15, isBeam: true, color: '#38bdf8' });
+            damageBloon(sb, 2, t, false);
+            prev = { x: sb.x, y: sb.y };
+          }
+        }
+        return;
+      }
+
+      // 9. Standard / Sub / Heli / Dartling / Wizard / Super / Bomb / Buccaneer Projectile
+      const spd = (t.projectileSpeed || 8) * 40;
       projectiles.push({
-        x: t.x, y: t.y,
+        x: originX, y: originY,
         vx: Math.cos(t.angle) * spd, vy: Math.sin(t.angle) * spd, speed: spd,
-        radius: t.isExplosive ? 7 : (t.isNinja ? 5 : 4),
+        radius: t.isExplosive ? 7 : (t.isNinja ? 5 : (t.isGlue ? 6 : 4)),
         life: 2.2, damage: t.damage, pierce: t.pierce, splashRadius: t.splashRadius,
         isExplosive: t.isExplosive, isHoming: t.isHoming, isLaser: t.isLaser,
         target: target, tower: t, hitBloonIds: new Set()
       });
 
-      playSfx(t.typeKey === 'wizard' ? 'magic' : (t.isExplosive ? 'dart' : 'dart'));
+      playSfx(t.typeKey === 'wizard' ? 'magic' : (t.isExplosive ? 'bomb' : 'dart'));
     }
 
     // --- 10. VFX Generators ---
@@ -2614,6 +3039,33 @@
         ctx.arc(inspectedTower.x, inspectedTower.y, Math.min(inspectedTower.range, 400), 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+      }
+
+      // 5b. Road Traps & Caltrops (Spike Factory)
+      for (const trap of roadTraps) {
+        ctx.save();
+        ctx.translate(trap.x, trap.y);
+        ctx.fillStyle = trap.canPopLead ? '#ea580c' : '#94a3b8';
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.2;
+        const count = Math.min(trap.spikesLeft, 8);
+        for (let s = 0; s < count; s++) {
+          const ang = (Math.PI * 2 / count) * s;
+          const r = 5 + (s % 2) * 3;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(ang - 0.2) * (r * 0.4), Math.sin(ang - 0.2) * (r * 0.4));
+          ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+          ctx.lineTo(Math.cos(ang + 0.2) * (r * 0.4), Math.sin(ang + 0.2) * (r * 0.4));
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
 
       // 6. Bloons Rendering (High Quality Procedural Shading)
@@ -3483,6 +3935,721 @@
             ctx.beginPath();
             ctx.arc(9.5, -12, 6 + orbPulse, 0, Math.PI * 2);
             ctx.fill();
+
+          } else if (t.typeKey === 'glue') {
+            // ==========================================
+            // STANDALONE HAZMAT GLUE GUNNER MONKEY
+            // ==========================================
+            // 1. Dual pressurized chemical tanks on back
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(-12, -7, 6, 14);
+            // Liquid gauge indicator (lime green)
+            ctx.fillStyle = '#84cc16';
+            ctx.fillRect(-11, -5, 4, 10);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-12, -7, 6, 14);
+
+            // 2. Hazmat Suit Torso
+            ctx.fillStyle = '#65a30d'; // Toxic green protective suit
+            ctx.beginPath();
+            ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#3f6212';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // 3. Monkey Head with Protective Hood & Goggles
+            ctx.fillStyle = '#4d7c0f'; // Hood
+            ctx.beginPath();
+            ctx.arc(1, 0, 9.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hazmat Visor / Goggles (Golden yellow reflective tint)
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath();
+            ctx.ellipse(4, -3, 3, 2.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(4, 3, 3, 2.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // 4. Heavy Glue Dispenser Hose & Nozzle
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(4, 3, 14, 4);
+            // Chrome nozzle tip
+            ctx.fillStyle = '#94a3b8';
+            ctx.beginPath();
+            ctx.moveTo(18, 1);
+            ctx.lineTo(23, 3);
+            ctx.lineTo(23, 7);
+            ctx.lineTo(18, 9);
+            ctx.closePath();
+            ctx.fill();
+
+            // Dripping Viscous Glue Globule at nozzle
+            const drip = Math.sin(now * 5) * 1.5;
+            ctx.fillStyle = '#bef264';
+            ctx.shadowColor = '#84cc16';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(24 + drip, 5, 2.5 + drip * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+          } else if (t.typeKey === 'sub') {
+            // ==========================================
+            // STANDALONE MONKEY SUBMARINE (WATER ONLY)
+            // ==========================================
+            // Animated Water Ripples around hull
+            const rip = Math.sin(now * 3) * 2;
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 24 + rip, 13 + rip * 0.5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Yellow Submarine Hull (Sleek hydro-body)
+            const subGrad = ctx.createLinearGradient(0, -9, 0, 9);
+            subGrad.addColorStop(0, '#fde047');
+            subGrad.addColorStop(0.5, '#eab308');
+            subGrad.addColorStop(1, '#a16207');
+            ctx.fillStyle = subGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 20, 9.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#713f12';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Stern Propeller & Rudders
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(-22, -4, 4, 8);
+            ctx.fillStyle = '#cbd5e1';
+            const propAng = now * 15;
+            ctx.save();
+            ctx.translate(-22, 0);
+            ctx.rotate(propAng);
+            ctx.fillRect(-1.5, -6, 3, 12);
+            ctx.restore();
+
+            // Conning Tower / Periscope Sail
+            ctx.fillStyle = '#ca8a04';
+            ctx.fillRect(-4, -6, 9, 12);
+            ctx.strokeStyle = '#713f12';
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(-4, -6, 9, 12);
+
+            // Periscope with Cyan Optical Glass
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(1, -12, 2.5, 6);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(2.5, -12, 3, 2.5);
+
+            // Bow Torpedo Tube Opening
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.ellipse(20, 0, 2.5, 4.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+          } else if (t.typeKey === 'ace') {
+            // ==========================================
+            // STANDALONE MONKEY ACE (RUNWAY + COMBAT PLANE)
+            // ==========================================
+            ctx.save();
+            // Undo character-angle rotation for the stationary ground runway
+            ctx.rotate(-t.angle);
+
+            // Ground Runway Tarmac Strip at (0, 0)
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(-18, -11, 36, 22);
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(-18, -11, 36, 22);
+            // Yellow Dashed Runway Centerlines
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(-13, -1, 6, 2);
+            ctx.fillRect(-2, -1, 6, 2);
+            ctx.fillRect(9, -1, 6, 2);
+
+            // Flying Fighter Plane at (curX - x, curY - y)
+            const dx = (t.curX !== undefined ? t.curX : t.x) - t.x;
+            const dy = (t.curY !== undefined ? t.curY : t.y) - t.y;
+            ctx.translate(dx, dy);
+            ctx.rotate(t.angle);
+
+            // Aerial Shadow
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(0, 16, 16, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Swept Wings
+            ctx.fillStyle = '#64748b';
+            ctx.beginPath();
+            ctx.moveTo(-5, -20);
+            ctx.lineTo(4, -20);
+            ctx.lineTo(8, -4);
+            ctx.lineTo(8, 4);
+            ctx.lineTo(4, 20);
+            ctx.lineTo(-5, 20);
+            ctx.lineTo(-2, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // Wingtip Dart Pods
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(-3, -18, 6, 3);
+            ctx.fillRect(-3, 15, 6, 3);
+
+            // Aircraft Fuselage
+            ctx.fillStyle = '#94a3b8';
+            ctx.beginPath();
+            ctx.ellipse(1, 0, 17, 5.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cockpit Canopy (Tinted Cyan Glass)
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.ellipse(4, 0, 5, 2.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Twin Spinning Propeller Blurs
+            ctx.fillStyle = 'rgba(241, 245, 249, 0.6)';
+            ctx.beginPath();
+            ctx.ellipse(1, -12, 1.5, 7, now * 20, 0, Math.PI * 2);
+            ctx.ellipse(1, 12, 1.5, 7, -now * 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+          } else if (t.typeKey === 'heli') {
+            // ==========================================
+            // STANDALONE HELI PILOT (HELIPAD + CHOPPER)
+            // ==========================================
+            ctx.save();
+            ctx.rotate(-t.angle);
+
+            // Ground Concrete Helipad
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(-16, -16, 32, 32);
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(-16, -16, 32, 32);
+
+            // Yellow Helipad "H" Marking
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, 11, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = '#facc15';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('H', 0, 0);
+
+            // Flying Helicopter at (curX - x, curY - y)
+            const hx = (t.curX !== undefined ? t.curX : t.x) - t.x;
+            const hy = (t.curY !== undefined ? t.curY : t.y) - t.y;
+            ctx.translate(hx, hy);
+            ctx.rotate(t.angle);
+
+            // Aerial Shadow
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(0, 18, 15, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail Boom & Small Spinning Tail Rotor
+            ctx.fillStyle = '#15803d';
+            ctx.fillRect(-22, -2, 16, 4);
+            ctx.save();
+            ctx.translate(-22, 0);
+            ctx.rotate(now * 25);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(-1, -5, 2, 10);
+            ctx.restore();
+
+            // Helicopter Fuselage (Camo Olive)
+            ctx.fillStyle = '#166534';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 14, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#14532d';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // Stub Wings & Dart Pods
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(-3, -12, 6, 24);
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(-2, -14, 5, 3);
+            ctx.fillRect(-2, 11, 5, 3);
+
+            // Rounded Bubble Cockpit Glass
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.ellipse(6, 0, 6, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Main Spinning Dual/Quad Rotor Blades
+            ctx.save();
+            ctx.rotate(now * 22);
+            ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
+            ctx.fillRect(-22, -1.8, 44, 3.6);
+            ctx.fillRect(-1.8, -22, 3.6, 44);
+            // Rotor Hub Cap
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            ctx.restore();
+
+          } else if (t.typeKey === 'mortar') {
+            // ==========================================
+            // STANDALONE MORTAR MONKEY (SANDBAGS + CANNON)
+            // ==========================================
+            // Sandbag Emplacement Ring
+            for (let i = 0; i < 6; i++) {
+              const sa = (Math.PI * 2 / 6) * i;
+              ctx.fillStyle = '#d97706';
+              ctx.beginPath();
+              ctx.ellipse(Math.cos(sa) * 15, Math.sin(sa) * 15, 6, 4, sa, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#92400e';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+
+            // Heavy Steel Mortar Tube (Angled upward)
+            const mGrad = ctx.createLinearGradient(0, -6, 0, 6);
+            mGrad.addColorStop(0, '#475569');
+            mGrad.addColorStop(0.5, '#1e293b');
+            mGrad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = mGrad;
+            ctx.fillRect(-6, -6, 20, 12);
+            // Reinforced Muzzle Ring
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(14, -7.5, 4, 15);
+            // Dark Mortar Bore
+            ctx.fillStyle = '#020617';
+            ctx.beginPath();
+            ctx.ellipse(18, 0, 2, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Gunner Monkey Silhouette beside tube
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(-8, 9, 6, 0, Math.PI * 2);
+            ctx.fill();
+            // Olive Steel Helmet
+            ctx.fillStyle = '#15803d';
+            ctx.beginPath();
+            ctx.arc(-8, 9, 6.5, Math.PI, Math.PI * 2);
+            ctx.fill();
+            // Artillery Shell in hand
+            ctx.fillStyle = '#eab308';
+            ctx.fillRect(-3, 6, 7, 3.5);
+
+          } else if (t.typeKey === 'dartling') {
+            // ==========================================
+            // STANDALONE DARTLING GUNNER (MINIGUN ROTARY)
+            // ==========================================
+            // Commando Monkey Torso
+            ctx.fillStyle = '#166534'; // Camo Fatigues
+            ctx.beginPath();
+            ctx.ellipse(-4, 0, 9, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head & Red/Green Commando Bandana
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(-1, 0, 8.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#dc2626'; // Red Bandana
+            ctx.fillRect(-3, -7, 4, 14);
+
+            // Heavy Gatling Gun Receiver & Ammo Drum
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(2, -5, 10, 10);
+            ctx.fillStyle = '#334155';
+            ctx.beginPath();
+            ctx.arc(3, -9, 5, 0, Math.PI * 2); // Round Ammo Drum
+            ctx.fill();
+            // Brass bullet belt
+            ctx.fillStyle = '#eab308';
+            ctx.fillRect(3, -5, 3, 4);
+
+            // 6-Barrel Rotary Gatling Cluster
+            const spin = now * 18;
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(12, -4.5, 14, 9);
+            // Rotating Barrels
+            ctx.fillStyle = '#0f172a';
+            for (let b = 0; b < 6; b++) {
+              const ba = (Math.PI * 2 / 6) * b + spin;
+              ctx.fillRect(25, Math.sin(ba) * 3.5 - 1, 3, 2);
+            }
+
+          } else if (t.typeKey === 'alchemist') {
+            // ==========================================
+            // STANDALONE ALCHEMIST MONKEY (POTIONS & BEAKER)
+            // ==========================================
+            // Brown Leather Alchemist Coat
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Potion Bandolier Strap Across Chest
+            ctx.fillStyle = '#451a03';
+            ctx.fillRect(-6, -7, 3, 14);
+            // 3 Colorful Glass Vials on bandolier
+            ctx.fillStyle = '#ef4444'; ctx.fillRect(-6, -6, 3, 3);
+            ctx.fillStyle = '#38bdf8'; ctx.fillRect(-6, -1, 3, 3);
+            ctx.fillStyle = '#22c55e'; ctx.fillRect(-6, 4, 3, 3);
+
+            // Alchemist Cowl Head & Spectacles
+            ctx.fillStyle = '#92400e';
+            ctx.beginPath();
+            ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Brass Spectacles
+            ctx.strokeStyle = '#eab308';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(3.5, -2.5, 2.2, 0, Math.PI * 2);
+            ctx.arc(3.5, 2.5, 2.2, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Raised Hand holding Conical Erlenmeyer Potion Flask
+            ctx.save();
+            ctx.translate(11, 4);
+            // Glass Flask
+            ctx.fillStyle = 'rgba(241, 245, 249, 0.4)';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-1, -7); ctx.lineTo(1, -7); ctx.lineTo(1, -4);
+            ctx.lineTo(6, 4); ctx.lineTo(-6, 4); ctx.lineTo(-1, -4);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Bubbling Glowing Purple/Green Potion
+            const bP = Math.sin(now * 7) * 1.2;
+            ctx.fillStyle = '#a855f7';
+            ctx.shadowColor = '#c084fc';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(4, 3); ctx.lineTo(-4, 3); ctx.lineTo(-1, -1); ctx.lineTo(1, -1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // Rising Bubble
+            ctx.fillStyle = '#e9d5ff';
+            ctx.beginPath();
+            ctx.arc(0, -2 + bP, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+          } else if (t.typeKey === 'druid') {
+            // ==========================================
+            // STANDALONE NATURE DRUID MONKEY
+            // ==========================================
+            // Mossy Fur & Leaves
+            ctx.fillStyle = '#15803d';
+            ctx.beginPath();
+            ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Druid Head & Horned Antlers
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Antler Horns
+            ctx.strokeStyle = '#b45309';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-2, -7); ctx.lineTo(-6, -14); ctx.lineTo(-10, -12);
+            ctx.moveTo(-2, 7);  ctx.lineTo(-6, 14);  ctx.lineTo(-10, 12);
+            ctx.stroke();
+
+            // Glowing Nature Jade Eyes
+            ctx.fillStyle = '#4ade80';
+            ctx.shadowColor = '#22c55e';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(4, -2.5, 2, 0, Math.PI * 2);
+            ctx.arc(4, 2.5, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Ancient Runic Oak Staff with Swirling Leaf Motes
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(8, -13, 3, 26);
+            // Glowing Jade Crystal Crown
+            const dPulse = Math.sin(now * 5) * 1.5;
+            ctx.fillStyle = '#22c55e';
+            ctx.shadowColor = '#4ade80';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(9.5, -13, 4 + dPulse * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+          } else if (t.typeKey === 'farm') {
+            // ==========================================
+            // STANDALONE BANANA FARM (PALM TREE & CRATES)
+            // ==========================================
+            // Harvest Wooden Crates on ground
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(-14, 4, 11, 10);
+            ctx.fillRect(4, 5, 10, 9);
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-14, 4, 11, 10);
+            ctx.strokeRect(4, 5, 10, 9);
+            // Bananas overflowing in crate
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.ellipse(-9, 4, 4, 2, -0.3, 0, Math.PI * 2);
+            ctx.ellipse(9, 5, 4, 2, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Wooden Palm Trunk with rings
+            ctx.fillStyle = '#92400e';
+            ctx.fillRect(-4, -6, 8, 16);
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(-4, -2, 8, 2);
+            ctx.fillRect(-4, 3, 8, 2);
+
+            // Tropical Palm Fronds Canopy (6 wide green leaves)
+            ctx.fillStyle = '#16a34a';
+            for (let l = 0; l < 6; l++) {
+              const la = (Math.PI * 2 / 6) * l;
+              ctx.beginPath();
+              ctx.moveTo(0, -6);
+              ctx.quadraticCurveTo(Math.cos(la) * 14, Math.sin(la) * 14 - 10, Math.cos(la) * 22, Math.sin(la) * 22 - 6);
+              ctx.quadraticCurveTo(Math.cos(la + 0.3) * 14, Math.sin(la + 0.3) * 14 - 6, 0, -6);
+              ctx.fill();
+            }
+
+            // Hanging Golden Bananas under fronds
+            ctx.fillStyle = '#fde047';
+            for (let b = 0; b < 4; b++) {
+              const ba = (Math.PI * 2 / 4) * b + 0.4;
+              ctx.beginPath();
+              ctx.ellipse(Math.cos(ba) * 6, Math.sin(ba) * 6 - 5, 3.5, 1.8, ba, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+          } else if (t.typeKey === 'spikes') {
+            // ==========================================
+            // STANDALONE SPIKE FACTORY (BUNKER & CHUTE)
+            // ==========================================
+            // Heavy Factory Base Structure
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(-14, -12, 24, 24);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(-14, -12, 24, 24);
+
+            // Yellow/Black Hazard Stripes
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(-14, 8, 24, 4);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-10, 8, 4, 4);
+            ctx.fillRect(-2, 8, 4, 4);
+            ctx.fillRect(6, 8, 4, 4);
+
+            // Twin Exhaust Smokestacks with Steam Puffs
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(-11, -18, 5, 7);
+            ctx.fillRect(1, -18, 5, 7);
+            const steam = Math.sin(now * 4) * 2;
+            ctx.fillStyle = 'rgba(241, 245, 249, 0.6)';
+            ctx.beginPath();
+            ctx.arc(-8.5, -20 + steam, 3, 0, Math.PI * 2);
+            ctx.arc(3.5, -21 - steam, 3.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Inclined Conveyor Belt Chute (Protruding forward)
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.moveTo(10, -6);
+            ctx.lineTo(20, -4);
+            ctx.lineTo(20, 6);
+            ctx.lineTo(10, 6);
+            ctx.closePath();
+            ctx.fill();
+
+            // Fresh Steel Spike sliding off conveyor
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.moveTo(17, 0); ctx.lineTo(23, -3); ctx.lineTo(23, 3);
+            ctx.closePath();
+            ctx.fill();
+
+          } else if (t.typeKey === 'village') {
+            // ==========================================
+            // STANDALONE MONKEY VILLAGE (TRIBAL HUT + RADAR)
+            // ==========================================
+            // Wooden Timber Hut Base
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(-13, -11, 26, 22);
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(-13, -11, 26, 22);
+
+            // Thatched Straw Overhang Roof
+            ctx.fillStyle = '#ca8a04';
+            ctx.beginPath();
+            ctx.moveTo(0, -19);
+            ctx.lineTo(17, -8);
+            ctx.lineTo(-17, -8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#854d0e';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // Front Village Doorway & Banners
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(-4, 0, 8, 11);
+            // Red Tribal Banner
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(-10, -5); ctx.lineTo(-5, 0); ctx.lineTo(-10, 2);
+            ctx.fill();
+
+            // Rotating Radar Scanner Antenna on Roof
+            ctx.save();
+            ctx.translate(0, -18);
+            ctx.rotate(now * 3);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-8, 0); ctx.lineTo(8, 0);
+            ctx.stroke();
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            ctx.arc(0, 0, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+          } else if (t.typeKey === 'engineer') {
+            // ==========================================
+            // STANDALONE ENGINEER MONKEY (HARDHAT & WRENCH)
+            // ==========================================
+            // High-Vis Orange Vest & Blue Denim Overalls
+            ctx.fillStyle = '#f97316'; // Orange Vest
+            ctx.beginPath();
+            ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#1d4ed8'; // Blue Denim
+            ctx.fillRect(-5, 2, 6, 6);
+
+            // Engineer Monkey Head
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Bright Safety-Yellow Hardhat with Brim
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.ellipse(-1, -3, 8.5, 8.5, 0, Math.PI, Math.PI * 2);
+            ctx.fill();
+            // Hardhat Brim
+            ctx.fillRect(-8, -4, 16, 2.5);
+            // Flashlight reflector on front of hardhat
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            ctx.arc(4, -4, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Giant Silver Monkey Wrench held in hand
+            ctx.save();
+            ctx.translate(9, 4);
+            ctx.rotate(0.3);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(-2, -8, 4, 16); // Handle
+            // Wrench Jaw
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.arc(0, -9, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0f172a'; // Jaw cutout
+            ctx.fillRect(-2, -13, 4, 4);
+            ctx.restore();
+
+            // Mini Sentry Gun Turret stationed on ground
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(-8, 9, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(-6, 8, 5, 2);
+
+          } else if (t.typeKey === 'beast') {
+            // ==========================================
+            // STANDALONE BEAST HANDLER MONKEY & MINI RAPTOR
+            // ==========================================
+            // Primal Fur & Bone Necklace
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.ellipse(-4, 0, 8.5, 7.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Dinosaur Tooth Necklace
+            ctx.fillStyle = '#f8fafc';
+            for (let tooth = -4; tooth <= 4; tooth += 2.5) {
+              ctx.beginPath();
+              ctx.moveTo(tooth, -3); ctx.lineTo(tooth + 1, 0); ctx.lineTo(tooth - 1, 0);
+              ctx.fill();
+            }
+
+            // Beast Handler Head & Feather/Horn Accents
+            ctx.fillStyle = '#92400e';
+            ctx.beginPath();
+            ctx.arc(-1, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+            // Horned Whispering Whistle in hand
+            ctx.fillStyle = '#ca8a04';
+            ctx.fillRect(4, 2, 7, 3);
+
+            // Mini Raptor Beast Pet Companion (at side)
+            ctx.save();
+            ctx.translate(6, 7);
+            // Raptor Scaly Green Body
+            ctx.fillStyle = '#15803d';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 6, 4, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Raptor Snout & Teeth
+            ctx.beginPath();
+            ctx.moveTo(4, -3); ctx.lineTo(10, 0); ctx.lineTo(4, 2);
+            ctx.closePath();
+            ctx.fill();
+            // Wild Golden Eye
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(5, -1.5, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Whip Tail
+            ctx.strokeStyle = '#15803d';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(-5, 0);
+            ctx.quadraticCurveTo(-9, 2, -12, -2);
+            ctx.stroke();
+            ctx.restore();
 
           } else {
             // Base Standalone Figure for other types
