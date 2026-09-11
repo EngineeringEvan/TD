@@ -415,6 +415,29 @@
       color: #94a3b8;
       margin: 2px 0 3px 0;
     }
+    .tier-pips {
+      display: flex;
+      gap: 3px;
+      margin: 2px 0 5px 0;
+    }
+    .tier-pip {
+      flex: 1;
+      height: 4px;
+      background: #1e293b;
+      border-radius: 2px;
+      border: 1px solid #334155;
+      transition: all 0.15s ease;
+    }
+    .tier-pip.active {
+      background: #38bdf8;
+      border-color: #0284c7;
+      box-shadow: 0 0 5px rgba(56, 189, 248, 0.6);
+    }
+    .tier-pip.active.t5 {
+      background: #facc15;
+      border-color: #ca8a04;
+      box-shadow: 0 0 8px rgba(250, 204, 21, 0.8);
+    }
     .btn-buy-upgrade {
       width: 100%;
       background: #059669;
@@ -713,7 +736,7 @@
   <!-- Top Header Bar -->
   <div class="top-header">
     <div class="lobby-badge">
-      <span class="version-tag" title="Build Version">v1.5.0-ALL-TOWERS</span>
+      <span class="version-tag" title="Build Version">v1.6.0-5TIERS</span>
       <button class="btn-lobby-trigger" onclick="openLanModal()">
         <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
       </button>
@@ -1071,6 +1094,9 @@
               <span id="p1-name">Path 1 Upgrade</span>
               <span id="p1-cost" style="color:#facc15;">$150</span>
             </div>
+            <div class="tier-pips" id="p1-pips">
+              <span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip t5"></span>
+            </div>
             <div id="p1-desc" class="path-desc">+2 Pierce</div>
             <button id="p1-btn" class="btn-buy-upgrade" onclick="buyUpgrade(1)">Buy Path 1</button>
           </div>
@@ -1081,15 +1107,21 @@
               <span id="p2-name">Path 2 Upgrade</span>
               <span id="p2-cost" style="color:#facc15;">$150</span>
             </div>
+            <div class="tier-pips" id="p2-pips">
+              <span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip t5"></span>
+            </div>
             <div id="p2-desc" class="path-desc">+40% Speed</div>
             <button id="p2-btn" class="btn-buy-upgrade" onclick="buyUpgrade(2)">Buy Path 2</button>
           </div>
 
-          <!-- Path 3 (NEW!) -->
+          <!-- Path 3 -->
           <div class="path-row">
             <div class="path-header">
               <span id="p3-name">Path 3 Upgrade</span>
               <span id="p3-cost" style="color:#facc15;">$150</span>
+            </div>
+            <div class="tier-pips" id="p3-pips">
+              <span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip t5"></span>
             </div>
             <div id="p3-desc" class="path-desc">Camo / Range</div>
             <button id="p3-btn" class="btn-buy-upgrade" onclick="buyUpgrade(3)">Buy Path 3</button>
@@ -1490,195 +1522,602 @@
 
     // --- 4. All 23 Authentic BTD6 Towers with 3 Upgrade Paths each! ---
     const TOWER_SPECS = {
-      // ===== PRIMARY CATEGORY (6) =====
       dart: {
         name: 'Dart Monkey', icon: '🎯', category: 'primary', cost: 200, range: 115, fireRate: 1.15, projectileSpeed: 9.5, damage: 1, pierce: 1, color: '#92400e',
         upgrades: {
-          path1: [{ name: 'Sharp Darts', cost: 140, desc: '+2 Pierce', apply: (t) => t.pierce += 2 }, { name: 'Spike-o-pult', cost: 350, desc: '+2 Dmg, +5 Pierce, Pops Lead', apply: (t) => { t.damage += 2; t.pierce += 5; t.canPopLead = true; } }],
-          path2: [{ name: 'Quick Shots', cost: 120, desc: '+40% Attack Speed', apply: (t) => t.fireRate *= 1.4 }, { name: 'Crossbow', cost: 480, desc: 'Huge Range & Double Damage', apply: (t) => { t.range += 55; t.damage += 2; } }],
-          path3: [{ name: 'Enhanced Vision', cost: 100, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }, { name: 'Sharpshooter', cost: 600, desc: 'High Critical Hit Chance', apply: (t) => { t.damage += 3; } }]
+          path1: [
+            { name: "Sharp Darts", cost: 140, desc: "+2 Pierce", apply: (t) => t.pierce += 2 },
+            { name: "Razor Sharp Darts", cost: 220, desc: "+3 Pierce", apply: (t) => t.pierce += 3 },
+            { name: "Spike-o-pult", cost: 350, desc: "Catapult ball: +2 Dmg, +10 Pierce, Pops Lead", apply: (t) => { t.damage += 2; t.pierce += 10; t.canPopLead = true; } },
+            { name: "Juggernaut", cost: 1800, desc: "Huge iron balls crush ceramics & lead (+5 Dmg)", apply: (t) => { t.damage += 5; t.pierce += 25; t.splashRadius = 35; } },
+            { name: "Ultra-Juggernaut", cost: 15000, desc: "Colossal spiked ball splits into 6 Juggernauts (+15 Dmg)", apply: (t) => { t.damage += 15; t.pierce += 80; t.splashRadius = 60; } }
+          ],
+          path2: [
+            { name: "Quick Shots", cost: 100, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Very Quick Shots", cost: 190, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Triple Shot", cost: 400, desc: "Throws 3 darts simultaneously", apply: (t) => { t.damage += 1; t.fireRate *= 1.25; } },
+            { name: "Super Monkey Fan Club", cost: 8000, desc: "Hypersonic throwing +2 Dmg & +4 Pierce", apply: (t) => { t.damage += 2; t.pierce += 4; t.fireRate *= 2.5; } },
+            { name: "Plasma Monkey Fan Club", cost: 45000, desc: "Fires blazing plasma bolts (+6 Dmg, melts Lead)", apply: (t) => { t.damage += 6; t.pierce += 8; t.fireRate *= 3.5; t.canPopLead = true; } }
+          ],
+          path3: [
+            { name: "Long Range Darts", cost: 90, desc: "+35 Range", apply: (t) => t.range += 35 },
+            { name: "Enhanced Eyesight", cost: 200, desc: "+35 Range & Camo Detection", apply: (t) => { t.range += 35; t.canSeeCamo = true; } },
+            { name: "Crossbow", cost: 625, desc: "Powerful high-velocity bolts (+3 Dmg, +3 Pierce)", apply: (t) => { t.range += 45; t.damage += 3; t.pierce += 3; } },
+            { name: "Sharp Shooter", cost: 2000, desc: "Armor-piercing critical strikes (+6 Dmg)", apply: (t) => { t.damage += 6; t.projectileSpeed *= 1.4; t.fireRate *= 1.35; } },
+            { name: "Crossbow Master", cost: 23500, desc: "Legendary master fires extreme crits (+12 Dmg, +10 Pierce)", apply: (t) => { t.damage += 12; t.pierce += 10; t.fireRate *= 2.5; t.range += 60; } }
+          ]
         }
       },
       boomerang: {
-        name: 'Boomerang', icon: '🪃', category: 'primary', cost: 320, range: 110, fireRate: 1.0, projectileSpeed: 8, damage: 1, pierce: 4, color: '#b45309', isBoomerang: true,
+        name: 'Boomerang', icon: '🪃', category: 'primary', cost: 320, range: 110, fireRate: 1, projectileSpeed: 8, damage: 1, pierce: 4, color: '#b45309', isBoomerang: true,
         upgrades: {
-          path1: [{ name: 'Improved Rangs', cost: 180, desc: '+4 Pierce', apply: (t) => t.pierce += 4 }, { name: 'Glaives', cost: 380, desc: 'Fast Glaives, +1 Dmg, Pops Lead', apply: (t) => { t.damage += 1; t.canPopLead = true; } }],
-          path2: [{ name: 'Faster Throwing', cost: 160, desc: '+45% Attack Speed', apply: (t) => t.fireRate *= 1.45 }, { name: 'Bionic Boomerang', cost: 650, desc: 'Cybernetic Arm 2.5x Fire Rate', apply: (t) => t.fireRate *= 2.5 }],
-          path3: [{ name: 'Red Hot Rangs', cost: 200, desc: 'Burns Bloons & Pops Lead', apply: (t) => t.canPopLead = true }, { name: 'Kylie Boomerang', cost: 500, desc: 'Straight Heavy Throw, +2 Dmg', apply: (t) => { t.damage += 2; t.pierce += 5; } }]
+          path1: [
+            { name: "Improved Rangs", cost: 180, desc: "+4 Pierce", apply: (t) => t.pierce += 4 },
+            { name: "Glaives", cost: 280, desc: "Glaives pop Lead & +1 Dmg", apply: (t) => { t.damage += 1; t.pierce += 4; t.canPopLead = true; } },
+            { name: "Glaive Ricochet", cost: 1300, desc: "Glaives bounce between bloons (+15 Pierce)", apply: (t) => { t.pierce += 15; t.damage += 1; } },
+            { name: "More Glaives", cost: 3400, desc: "Orbital glaive ring shreds all adjacent bloons", apply: (t) => { t.damage += 3; t.pierce += 25; t.fireRate *= 1.3; } },
+            { name: "Glaive Lord", cost: 32400, desc: "Dual permanent spinning glaive crowns annihilate bloons", apply: (t) => { t.damage += 10; t.pierce += 80; t.fireRate *= 1.6; } }
+          ],
+          path2: [
+            { name: "Faster Throwing", cost: 175, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Faster Rangs", cost: 250, desc: "+40% Projectile Speed & +25% Attack Speed", apply: (t) => { t.projectileSpeed *= 1.4; t.fireRate *= 1.25; } },
+            { name: "Bionic Boomerang", cost: 1450, desc: "Cybernetic arm: 2.5x Fire Rate, +1 Dmg", apply: (t) => { t.fireRate *= 2.5; t.damage += 1; } },
+            { name: "Turbo Charge", cost: 4000, desc: "Hyper-speed throwing (+3 Dmg, +4 Pierce)", apply: (t) => { t.fireRate *= 2.2; t.damage += 3; t.pierce += 4; } },
+            { name: "Perma Charge", cost: 35000, desc: "Permanent turbo hypersonic throwing (+8 Dmg)", apply: (t) => { t.fireRate *= 3.5; t.damage += 8; t.canPopLead = true; } }
+          ],
+          path3: [
+            { name: "Long Range Rangs", cost: 100, desc: "+30 Range", apply: (t) => t.range += 30 },
+            { name: "Red Hot Rangs", cost: 300, desc: "Melts Lead & sets bloons on fire", apply: (t) => { t.canPopLead = true; t.damage += 1; } },
+            { name: "Kylie Boomerang", cost: 1300, desc: "Heavy straight-line throw (+3 Dmg, +8 Pierce)", apply: (t) => { t.damage += 3; t.pierce += 8; } },
+            { name: "MOAB Press", cost: 2400, desc: "Heavy rangs push back MOAB blimps (+6 Dmg)", apply: (t) => { t.damage += 6; t.moabMultiplier = 4; } },
+            { name: "MOAB Domination", cost: 50000, desc: "Colossal flaming rangs stun & crush blimps (+25 Dmg)", apply: (t) => { t.damage += 25; t.moabMultiplier = 8; t.fireRate *= 1.5; } }
+          ]
         }
       },
       bomb: {
-        name: 'Bomb Cannon', icon: '💣', category: 'primary', cost: 420, range: 125, fireRate: 0.65, projectileSpeed: 7, damage: 2, splashRadius: 70, pierce: 14, isExplosive: true, canPopLead: true, color: '#475569',
+        name: 'Bomb Cannon', icon: '💣', category: 'primary', cost: 420, range: 125, fireRate: 0.65, projectileSpeed: 7, damage: 2, pierce: 14, color: '#475569', isExplosive: true, splashRadius: 70, canPopLead: true,
         upgrades: {
-          path1: [{ name: 'Bigger Bombs', cost: 260, desc: '+40% Blast Radius', apply: (t) => { t.splashRadius *= 1.4; t.damage += 1; } }, { name: 'MOAB Eliminator', cost: 900, desc: '6x Damage to MOAB & Blimps', apply: (t) => t.moabMultiplier = 6 }],
-          path2: [{ name: 'Faster Reload', cost: 220, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Cluster Bombs', cost: 700, desc: 'Splits into 6 secondary bombs', apply: (t) => t.hasCluster = true }],
-          path3: [{ name: 'Extra Range', cost: 180, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Frag Bombs', cost: 400, desc: 'Shoots sharp shrapnel on impact', apply: (t) => t.pierce += 6 }]
+          path1: [
+            { name: "Bigger Bombs", cost: 350, desc: "+35% Blast Radius, +1 Dmg", apply: (t) => { t.splashRadius *= 1.35; t.damage += 1; } },
+            { name: "Heavy Bombs", cost: 650, desc: "+2 Dmg, +10 Pierce", apply: (t) => { t.damage += 2; t.pierce += 10; } },
+            { name: "Really Big Bombs", cost: 1200, desc: "Massive blast radius (+4 Dmg, +15 Pierce)", apply: (t) => { t.splashRadius *= 1.4; t.damage += 4; t.pierce += 15; } },
+            { name: "Bloon Impact", cost: 3600, desc: "Stuns all hit bloons (+6 Dmg)", apply: (t) => { t.damage += 6; t.pierce += 25; } },
+            { name: "Bloon Crush", cost: 55000, desc: "Completely immobilizes all bloons & MOABs (+20 Dmg)", apply: (t) => { t.damage += 20; t.pierce += 60; t.splashRadius *= 1.3; } }
+          ],
+          path2: [
+            { name: "Faster Reload", cost: 250, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Missile Launcher", cost: 400, desc: "+40% Speed & +25 Range", apply: (t) => { t.projectileSpeed *= 1.4; t.range += 25; } },
+            { name: "MOAB Mauler", cost: 900, desc: "5x Damage to MOAB & Blimps", apply: (t) => { t.moabMultiplier = 5; t.damage += 2; } },
+            { name: "MOAB Assassin", cost: 3200, desc: "12x Damage to MOABs (+8 Dmg, faster reload)", apply: (t) => { t.moabMultiplier = 12; t.damage += 8; t.fireRate *= 1.35; } },
+            { name: "MOAB Eliminator", cost: 25000, desc: "Annihilates blimps with anti-air missiles (25x Dmg)", apply: (t) => { t.moabMultiplier = 25; t.damage += 25; t.fireRate *= 1.8; } }
+          ],
+          path3: [
+            { name: "Extra Range", cost: 200, desc: "+35 Range", apply: (t) => t.range += 35 },
+            { name: "Frag Bombs", cost: 300, desc: "Explosions spray 8 sharp shrapnel fragments", apply: (t) => t.pierce += 8 },
+            { name: "Cluster Bomb", cost: 800, desc: "Bombs spawn secondary cluster of 6 explosions", apply: (t) => { t.hasCluster = true; t.damage += 2; } },
+            { name: "Recursive Cluster", cost: 2800, desc: "Clusters trigger sub-clusters every shot (+5 Dmg)", apply: (t) => { t.damage += 5; t.splashRadius *= 1.25; } },
+            { name: "Bomb Blitz", cost: 35000, desc: "Catastrophic bombardment covers entire track (+20 Dmg)", apply: (t) => { t.damage += 20; t.fireRate *= 1.6; t.pierce += 40; } }
+          ]
         }
       },
       tack: {
         name: 'Tack Shooter', icon: '📍', category: 'primary', cost: 280, range: 85, fireRate: 0.9, projectileSpeed: 8, damage: 1, pierce: 2, color: '#f97316', isTack: true,
         upgrades: {
-          path1: [{ name: 'Faster Shooting', cost: 150, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Ring of Fire', cost: 620, desc: 'Burst of Flames, Melts Lead', apply: (t) => { t.damage += 2; t.canPopLead = true; t.isFire = true; } }],
-          path2: [{ name: 'More Tacks', cost: 140, desc: 'Shoots 12 Tacks instead of 8', apply: (t) => t.tackCount = 12 }, { name: 'Blade Shooter', cost: 450, desc: 'Sharp Razor Blades, +1 Dmg', apply: (t) => { t.damage += 1; t.pierce += 3; } }],
-          path3: [{ name: 'Long Range Tacks', cost: 110, desc: '+30% Tack Range', apply: (t) => t.range *= 1.3 }, { name: 'Tack Sprayer', cost: 500, desc: 'Shoots 16 Tacks in all directions', apply: (t) => t.tackCount = 16 }]
+          path1: [
+            { name: "Faster Shooting", cost: 150, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Even Faster Shooting", cost: 300, desc: "+45% Attack Speed", apply: (t) => t.fireRate *= 1.45 },
+            { name: "Ring of Fire", cost: 900, desc: "Roaring ring of fire melts Lead (+2 Dmg)", apply: (t) => { t.damage += 2; t.canPopLead = true; t.isFire = true; } },
+            { name: "Blade Maelstrom", cost: 2700, desc: "Shoots razor blades in all directions (+4 Dmg)", apply: (t) => { t.damage += 4; t.pierce += 6; t.fireRate *= 1.4; } },
+            { name: "Inferno Ring", cost: 45500, desc: "White-hot inferno incinerates ceramics & MOABs (+18 Dmg)", apply: (t) => { t.damage += 18; t.range += 30; t.fireRate *= 1.5; } }
+          ],
+          path2: [
+            { name: "More Tacks", cost: 100, desc: "Shoots 10 tacks instead of 8", apply: (t) => t.tackCount = 10 },
+            { name: "Even More Tacks", cost: 225, desc: "Shoots 12 tacks", apply: (t) => t.tackCount = 12 },
+            { name: "Blade Shooter", cost: 550, desc: "Sharp razor blades (+1 Dmg, +3 Pierce)", apply: (t) => { t.damage += 1; t.pierce += 3; } },
+            { name: "Super Maelstrom", cost: 15000, desc: "16 spinning blades at 3x fire rate (+3 Dmg)", apply: (t) => { t.tackCount = 16; t.fireRate *= 3.0; t.damage += 3; } },
+            { name: "Tack Annihilator", cost: 40000, desc: "24 razor blades at extreme hyper-velocity (+8 Dmg)", apply: (t) => { t.tackCount = 24; t.fireRate *= 3.5; t.damage += 8; t.pierce += 10; } }
+          ],
+          path3: [
+            { name: "Long Range Tacks", cost: 100, desc: "+25% Range", apply: (t) => t.range *= 1.25 },
+            { name: "Super Range Tacks", cost: 225, desc: "+30% Range", apply: (t) => t.range *= 1.3 },
+            { name: "Tack Sprayer", cost: 500, desc: "Sprays 16 tacks per volley", apply: (t) => t.tackCount = 16 },
+            { name: "Overdrive", cost: 3200, desc: "Extreme fire rate (+2 Dmg, 2.5x speed)", apply: (t) => { t.fireRate *= 2.5; t.damage += 2; } },
+            { name: "The Tack Zone", cost: 45000, desc: "Fires 32 tacks at blinding speed (+6 Dmg, pops Lead)", apply: (t) => { t.tackCount = 32; t.fireRate *= 3.2; t.damage += 6; t.canPopLead = true; } }
+          ]
         }
       },
       ice: {
-        name: 'Ice Monkey', icon: '❄️', category: 'primary', cost: 360, range: 90, fireRate: 0.85, damage: 1, pierce: 20, isAoePulse: true, color: '#38bdf8',
+        name: 'Ice Monkey', icon: '❄️', category: 'primary', cost: 360, range: 90, fireRate: 0.85, projectileSpeed: 8, damage: 1, pierce: 20, color: '#38bdf8', isAoePulse: true,
         upgrades: {
-          path1: [{ name: 'Permafrost', cost: 200, desc: 'Permanently slows bloons by 40%', apply: (t) => t.permafrost = true }, { name: 'Deep Freeze', cost: 380, desc: 'Freezes 2 Layers Deep + Lead', apply: (t) => { t.damage += 1; t.canPopLead = true; } }],
-          path2: [{ name: 'Enhanced Frost', cost: 160, desc: '+40% Range', apply: (t) => t.range *= 1.4 }, { name: 'Arctic Wind', cost: 750, desc: 'Massive freeze aura, fast rate', apply: (t) => { t.range *= 1.35; t.fireRate *= 1.4; } }],
-          path3: [{ name: 'Snap Freeze', cost: 220, desc: 'Freezes bloons for 50% longer', apply: (t) => t.freezeDuration = 2.0 }, { name: 'Icicles', cost: 680, desc: 'Bloons grow sharp icicles', apply: (t) => t.damage += 2 }]
+          path1: [
+            { name: "Permafrost", cost: 100, desc: "Bloons remain slowed after thawing", apply: (t) => t.permafrost = true },
+            { name: "Cold Snap", cost: 250, desc: "Freezes Camo & Lead bloons", apply: (t) => { t.canSeeCamo = true; t.canPopLead = true; } },
+            { name: "Ice Shards", cost: 1500, desc: "Popped frozen bloons burst into razor shards (+2 Dmg)", apply: (t) => { t.damage += 2; t.pierce += 15; } },
+            { name: "Embrittlement", cost: 2200, desc: "Enemies take +2 bonus damage from all towers", apply: (t) => { t.damage += 3; t.range += 20; } },
+            { name: "Super Brittle", cost: 28000, desc: "All bloons & blimps take +5 damage from all towers", apply: (t) => { t.damage += 8; t.freezeDuration = 3.0; t.range += 35; } }
+          ],
+          path2: [
+            { name: "Enhanced Freeze", cost: 200, desc: "Freeze lasts 50% longer", apply: (t) => t.freezeDuration = 1.8 },
+            { name: "Deep Freeze", cost: 350, desc: "Freezes through 2 bloon layers", apply: (t) => t.damage += 1 },
+            { name: "Arctic Wind", cost: 2400, desc: "Permanent aura slows all bloons in radius by 60%", apply: (t) => { t.range += 30; t.damage += 2; } },
+            { name: "Snowstorm", cost: 3000, desc: "Freezes screen & deals heavy frost damage (+4 Dmg)", apply: (t) => { t.damage += 4; t.fireRate *= 1.4; } },
+            { name: "Absolute Zero", cost: 26000, desc: "Freezes all bloons globally & grants +50% ally ice speed", apply: (t) => { t.damage += 12; t.range += 40; t.fireRate *= 1.8; } }
+          ],
+          path3: [
+            { name: "Larger Radius", cost: 100, desc: "+30 Range", apply: (t) => t.range += 30 },
+            { name: "Re-Freeze", cost: 200, desc: "Can re-freeze already frozen bloons", apply: (t) => t.reFreeze = true },
+            { name: "Cryo Cannon", cost: 2000, desc: "Shoots cryogenic freeze bombs at long range", apply: (t) => { t.range += 75; t.damage += 2; } },
+            { name: "Icicles", cost: 2750, desc: "Sharp growing icicles puncture nearby bloons (+4 Dmg)", apply: (t) => { t.damage += 4; t.pierce += 20; } },
+            { name: "Icicle Impale", cost: 30000, desc: "Massive sub-zero icicle spikes freeze & crush MOABs (+20 Dmg)", apply: (t) => { t.damage += 20; t.moabMultiplier = 6; t.fireRate *= 1.5; } }
+          ]
         }
       },
       glue: {
-        name: 'Glue Gunner', icon: '🧪', category: 'primary', cost: 260, range: 115, fireRate: 1.0, projectileSpeed: 9, damage: 1, pierce: 1, color: '#eab308', isGlue: true,
+        name: 'Glue Gunner', icon: '🧪', category: 'primary', cost: 260, range: 120, fireRate: 1, projectileSpeed: 9.5, damage: 1, pierce: 2, color: '#84cc16', isGlue: true,
         upgrades: {
-          path1: [{ name: 'Corrosive Glue', cost: 240, desc: 'Glue dissolves 1 layer per sec', apply: (t) => { t.glueCorrosive = true; t.canPopLead = true; } }, { name: 'Bloon Dissolver', cost: 750, desc: 'Melts bloons 3x faster', apply: (t) => { t.glueCorrosive = true; t.glueDissolver = true; t.damage += 2; } }],
-          path2: [{ name: 'Bigger Globs', cost: 130, desc: 'Glue hits 3 bloons at once', apply: (t) => t.pierce += 2 }, { name: 'Glue Hose', cost: 480, desc: 'Super fast pressurized glue stream', apply: (t) => t.fireRate *= 2.2 }],
-          path3: [{ name: 'Stickier Glue', cost: 120, desc: 'Glue slow lasts 8 seconds', apply: (t) => t.glueDuration = 8.0 }, { name: 'MOAB Glue', cost: 850, desc: 'Sticky glue can slow MOAB blimps', apply: (t) => t.canSlowMoab = true }]
+          path1: [
+            { name: "Glue Soak", cost: 200, desc: "Glue penetrates through all layers", apply: (t) => t.pierce += 2 },
+            { name: "Corrosive Glue", cost: 400, desc: "Acidic glue dissolves 1 layer every 1.5s", apply: (t) => t.corrosive = true },
+            { name: "Bloon Dissolver", cost: 2500, desc: "Rapidly dissolves 2 layers per second (+2 Dmg)", apply: (t) => { t.dissolver = true; t.damage += 2; } },
+            { name: "Bloon Liquefier", cost: 5500, desc: "Super-acid melts 5 layers per second (+5 Dmg)", apply: (t) => { t.damage += 5; t.pierce += 4; } },
+            { name: "The Bloon Solver", cost: 22000, desc: "Mega-acid disintegrates ceramics & blimps instantly (+15 Dmg)", apply: (t) => { t.damage += 15; t.fireRate *= 2.0; t.splashRadius = 45; } }
+          ],
+          path2: [
+            { name: "Bigger Globs", cost: 100, desc: "+3 Pierce per shot", apply: (t) => t.pierce += 3 },
+            { name: "Glue Splatter", cost: 1800, desc: "Glues up to 6 bloons per shot (+35 Splash)", apply: (t) => { t.splashRadius = 40; t.pierce += 6; } },
+            { name: "Glue Hose", cost: 3250, desc: "3x Fire Rate coats tracks in sticky glue", apply: (t) => t.fireRate *= 3.0 },
+            { name: "Glue Strike", cost: 3500, desc: "Glues all bloons on screen & increases dmg taken", apply: (t) => { t.damage += 3; t.range += 30; } },
+            { name: "Glue Storm", cost: 15000, desc: "Permanent rain of glue soaks every bloon on screen", apply: (t) => { t.fireRate *= 3.5; t.damage += 8; t.range += 50; } }
+          ],
+          path3: [
+            { name: "Stickier Glue", cost: 100, desc: "Glue slow lasts 50% longer", apply: (t) => t.slowDuration = 6.0 },
+            { name: "Stronger Glue", cost: 400, desc: "Slows bloons by 75% instead of 50%", apply: (t) => t.slowMult = 0.25 },
+            { name: "MOAB Glue", cost: 3400, desc: "Glue sticks to and slows MOAB & BFB blimps", apply: (t) => { t.gluesMoab = true; t.damage += 2; } },
+            { name: "Relentless Glue", cost: 3000, desc: "Popped bloons drop glue puddles on track", apply: (t) => { t.damage += 4; t.pierce += 8; } },
+            { name: "Super Glue", cost: 28000, desc: "Completely glues & immobilizes bloons & MOABs on hit (+12 Dmg)", apply: (t) => { t.damage += 12; t.superGlue = true; } }
+          ]
         }
       },
-
-      // ===== MILITARY CATEGORY (6) =====
       sniper: {
-        name: 'Sniper Monkey', icon: '🎯', category: 'military', cost: 400, range: 9999, fireRate: 0.45, damage: 3, pierce: 1, color: '#15803d', isSniper: true,
+        name: 'Sniper Monkey', icon: '🎯', category: 'military', cost: 350, range: 9999, fireRate: 0.45, projectileSpeed: 999, damage: 2, pierce: 1, color: '#15803d', isSniper: true,
         upgrades: {
-          path1: [{ name: 'Full Metal Jacket', cost: 250, desc: '+3 Dmg, Melts Lead & Ceramics', apply: (t) => { t.damage += 3; t.canPopLead = true; } }, { name: 'Deadly Precision', cost: 800, desc: 'Deals 20 Damage per shot', apply: (t) => t.damage += 14 }],
-          path2: [{ name: 'Night Vision', cost: 180, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }, { name: 'Semi-Automatic', cost: 750, desc: '3x Faster Firing Speed', apply: (t) => t.fireRate *= 3.0 }],
-          path3: [{ name: 'Fast Firing', cost: 200, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Shrapnel Shot', cost: 500, desc: 'Bursts into 5 shrapnel shards', apply: (t) => t.hasShrapnel = true }]
+          path1: [
+            { name: "Full Metal Jacket", cost: 350, desc: "+2 Dmg & Pops Lead", apply: (t) => { t.damage += 2; t.canPopLead = true; } },
+            { name: "Large Calibre", cost: 1500, desc: "+4 Damage", apply: (t) => t.damage += 4 },
+            { name: "Deadly Precision", cost: 3000, desc: "+15 Dmg (Massive ceramic/lead destruction)", apply: (t) => t.damage += 15 },
+            { name: "Maim MOAB", cost: 5000, desc: "Stuns MOAB blimps on hit (+25 Dmg)", apply: (t) => { t.damage += 25; t.moabStun = true; } },
+            { name: "Cripple MOAB", cost: 34000, desc: "+60 Dmg & Crippled blimps take +5 dmg from all allies", apply: (t) => { t.damage += 60; t.crippleMoab = true; } }
+          ],
+          path2: [
+            { name: "Night Vision Goggles", cost: 185, desc: "Detects Camo Bloons", apply: (t) => t.canSeeCamo = true },
+            { name: "Shrapnel Shot", cost: 450, desc: "Each shot sprays 6 sharp shrapnel fragments", apply: (t) => t.shrapnel = true },
+            { name: "Bouncing Bullet", cost: 2400, desc: "Bullets ricochet to 3 additional bloons (+3 Dmg)", apply: (t) => { t.bouncingBullet = true; t.damage += 3; } },
+            { name: "Supply Drop", cost: 7200, desc: "Air-drops +$600 cash crate at round end (+6 Dmg)", apply: (t) => { t.incomeBonus = (t.incomeBonus || 0) + 600; t.damage += 6; } },
+            { name: "Elite Sniper", cost: 14500, desc: "Air-drops +$1500 cash & buffs fire rate of all snipers (+15 Dmg)", apply: (t) => { t.incomeBonus = (t.incomeBonus || 0) + 1500; t.damage += 15; t.fireRate *= 1.6; } }
+          ],
+          path3: [
+            { name: "Fast Firing", cost: 400, desc: "+50% Attack Speed", apply: (t) => t.fireRate *= 1.5 },
+            { name: "Even Faster Firing", cost: 400, desc: "+60% Attack Speed", apply: (t) => t.fireRate *= 1.6 },
+            { name: "Semi-Automatic", cost: 3000, desc: "Fires 3x faster (+1 Dmg)", apply: (t) => { t.fireRate *= 3.0; t.damage += 1; } },
+            { name: "Full Auto Rifle", cost: 4250, desc: "Rapid machine-gun fire (+3 Dmg)", apply: (t) => { t.fireRate *= 2.2; t.damage += 3; } },
+            { name: "Elite Defender", cost: 14000, desc: "Hyper-machine-gun at 4x speed (+8 Dmg, fires faster on leak)", apply: (t) => { t.fireRate *= 4.0; t.damage += 8; } }
+          ]
         }
       },
       buccaneer: {
-        name: 'Buccaneer', icon: '⛵', category: 'military', cost: 500, range: 130, fireRate: 1.0, projectileSpeed: 9, damage: 1, pierce: 3, color: '#0369a1', isWaterOnly: true, isShip: true,
+        name: 'Buccaneer', icon: '🚢', category: 'military', cost: 500, range: 145, fireRate: 1, projectileSpeed: 9, damage: 1, pierce: 3, color: '#78350f', isWaterOnly: true,
         upgrades: {
-          path1: [{ name: 'Faster Firing', cost: 200, desc: '+50% Cannons Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Cannon Ship', cost: 650, desc: 'Adds heavy explosive cannon', apply: (t) => { t.isExplosive = true; t.damage += 2; t.canPopLead = true; } }],
-          path2: [{ name: 'Grape Shot', cost: 220, desc: 'Sprays 5 grape scatter pellets', apply: (t) => t.hasGrapes = true }, { name: 'Crow Nest', cost: 300, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }],
-          path3: [{ name: 'Longer Cannons', cost: 180, desc: '+30% Range', apply: (t) => t.range *= 1.3 }, { name: 'Merchantman', cost: 800, desc: 'Generates +$250 cash per round', apply: (t) => t.incomeBonus = 250 }]
+          path1: [
+            { name: "Faster Shooting", cost: 200, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Double Shot", cost: 500, desc: "Twin cannons fire simultaneously", apply: (t) => { t.damage += 1; t.fireRate *= 1.25; } },
+            { name: "Destroyer", cost: 2950, desc: "Quad rapid-fire cannons (4x Fire Rate)", apply: (t) => { t.fireRate *= 3.5; t.damage += 1; } },
+            { name: "Aircraft Carrier", cost: 7200, desc: "Launches 3 combat aircraft patrolling track (+4 Dmg)", apply: (t) => { t.damage += 4; t.range += 50; } },
+            { name: "Carrier Flagship", cost: 25000, desc: "Supreme flagship launches laser fighters & buffs all water towers", apply: (t) => { t.damage += 12; t.fireRate *= 2.0; t.canPopLead = true; } }
+          ],
+          path2: [
+            { name: "Grape Shot", cost: 500, desc: "Fires 5 sharp grapes in wide spread", apply: (t) => t.pierce += 4 },
+            { name: "Hot Shot", cost: 500, desc: "Flaming grapes burn bloons & melt Lead", apply: (t) => { t.canPopLead = true; t.damage += 1; } },
+            { name: "Cannon Ship", cost: 900, desc: "Mounts heavy explosive cannon (+3 Dmg, splash 45)", apply: (t) => { t.damage += 3; t.splashRadius = 45; } },
+            { name: "Monkey Pirates", cost: 4500, desc: "Grappling hook pulls down MOAB blimps (+8 Dmg)", apply: (t) => { t.damage += 8; t.moabMultiplier = 4; } },
+            { name: "Pirate Lord", cost: 21000, desc: "Triple harpoon cannons seize BFBs and ZOMGs (+20 Dmg)", apply: (t) => { t.damage += 20; t.moabMultiplier = 8; t.fireRate *= 1.5; } }
+          ],
+          path3: [
+            { name: "Long Range", cost: 180, desc: "+35 Range", apply: (t) => t.range += 35 },
+            { name: "Crow's Nest", cost: 250, desc: "Detects Camo Bloons", apply: (t) => t.canSeeCamo = true },
+            { name: "Merchantman", cost: 2300, desc: "Earns +$250 cash at the end of each round", apply: (t) => t.incomeBonus = (t.incomeBonus || 0) + 250 },
+            { name: "Favoured Trades", cost: 5500, desc: "Earns +$600 cash/round & increases sell value to 85%", apply: (t) => t.incomeBonus = (t.incomeBonus || 0) + 600 },
+            { name: "Trade Empire", cost: 23000, desc: "Earns +$1800 cash/round & empowers all fleet ships", apply: (t) => { t.incomeBonus = (t.incomeBonus || 0) + 1800; t.damage += 6; } }
+          ]
         }
       },
       sub: {
-        name: 'Monkey Sub', icon: '🌊', category: 'military', cost: 420, range: 130, fireRate: 1.1, projectileSpeed: 9.5, damage: 1, pierce: 2, isWaterOnly: true, isHoming: true, color: '#0284c7', isSub: true,
+        name: 'Monkey Sub', icon: '🌊', category: 'military', cost: 325, range: 130, fireRate: 1.1, projectileSpeed: 9, damage: 1, pierce: 2, color: '#0284c7', isWaterOnly: true, isSub: true,
         upgrades: {
-          path1: [{ name: 'Longer Range', cost: 150, desc: '+35% Radar Range', apply: (t) => t.range *= 1.35 }, { name: 'Advanced Intel', cost: 600, desc: 'Attacks anywhere in range of any tower!', apply: (t) => { t.range = 9999; t.canSeeCamo = true; } }],
-          path2: [{ name: 'Barbed Darts', cost: 220, desc: '+3 Pierce', apply: (t) => t.pierce += 3 }, { name: 'Heat-tipped Darts', cost: 480, desc: 'Darts pop Lead Bloons', apply: (t) => t.canPopLead = true }],
-          path3: [{ name: 'Twin Guns', cost: 180, desc: '+40% Firing Rate', apply: (t) => t.fireRate *= 1.4 }, { name: 'Airburst Darts', cost: 720, desc: 'Darts burst into 3 sub-darts on contact', apply: (t) => { t.pierce += 3; t.damage += 1; } }]
+          path1: [
+            { name: "Longer Range Darts", cost: 130, desc: "+35 Range", apply: (t) => t.range += 35 },
+            { name: "Advanced Intel", cost: 500, desc: "Attacks bloons in range of ANY tower on the map!", apply: (t) => { t.range = 9999; t.advancedIntel = true; } },
+            { name: "Submerge and Support", cost: 1000, desc: "Submerges to strip Camo from all bloons in radius", apply: (t) => { t.canSeeCamo = true; t.stripsCamo = true; } },
+            { name: "Bloontonium Reactor", cost: 2700, desc: "Submerged reactor continuously damages all bloons (+4 Dmg)", apply: (t) => { t.damage += 4; t.fireRate *= 1.5; } },
+            { name: "Energizer", cost: 32000, desc: "Colossal reactor aura +12 Dmg & global ability cooldown boost", apply: (t) => { t.damage += 12; t.fireRate *= 2.0; } }
+          ],
+          path2: [
+            { name: "Barbed Darts", cost: 450, desc: "+3 Pierce", apply: (t) => t.pierce += 3 },
+            { name: "Heat-tipped Darts", cost: 300, desc: "Melts Lead bloons", apply: (t) => t.canPopLead = true },
+            { name: "Ballistic Missile", cost: 1450, desc: "Long-range guided explosive missiles (+4 Dmg, splash 50)", apply: (t) => { t.damage += 4; t.splashRadius = 50; } },
+            { name: "First Strike Capability", cost: 14000, desc: "Nuclear warheads decimate MOAB blimps (+15 Dmg)", apply: (t) => { t.damage += 15; t.moabMultiplier = 5; } },
+            { name: "Pre-Emptive Strike", cost: 32000, desc: "Instantly fires tactical nuke at any spawning blimp (+35 Dmg)", apply: (t) => { t.damage += 35; t.moabMultiplier = 10; } }
+          ],
+          path3: [
+            { name: "Twin Guns", cost: 450, desc: "+50% Attack Speed", apply: (t) => t.fireRate *= 1.5 },
+            { name: "Airburst Darts", cost: 1000, desc: "Darts burst into 3 sub-darts on contact", apply: (t) => { t.damage += 1; t.pierce += 3; } },
+            { name: "Triple Guns", cost: 1100, desc: "Fires 3 darts per volley at +40% speed", apply: (t) => { t.fireRate *= 1.4; t.damage += 1; } },
+            { name: "Armor Piercing Darts", cost: 3000, desc: "Heavy armor-piercing darts shred ceramics & blimps (+5 Dmg)", apply: (t) => { t.damage += 5; t.pierce += 6; } },
+            { name: "Sub Commander", cost: 25000, desc: "Doubles damage & pierce of all submarines on the map", apply: (t) => { t.damage += 15; t.pierce += 12; t.fireRate *= 1.8; } }
+          ]
         }
       },
       ace: {
         name: 'Monkey Ace', icon: '✈️', category: 'military', cost: 750, range: 9999, fireRate: 0.85, projectileSpeed: 9, damage: 1, pierce: 3, color: '#cbd5e1', isAce: true,
         upgrades: {
-          path1: [{ name: 'Rapid Fire', cost: 220, desc: '+40% Attack Speed', apply: (t) => t.fireRate *= 1.4 }, { name: 'Sharper Darts', cost: 450, desc: '+4 Pierce per Dart', apply: (t) => t.pierce += 4 }],
-          path2: [{ name: 'Exploding Pineapple', cost: 260, desc: 'Drops road bombs that explode', apply: (t) => { t.hasBombs = true; t.canPopLead = true; } }, { name: 'Spy Plane', cost: 380, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }],
-          path3: [{ name: 'Radial Volley', cost: 200, desc: 'Fires 12 Darts in a circle', apply: (t) => t.radialCount = 12 }, { name: 'Neva-Miss Targeting', cost: 850, desc: 'All 12 darts home in on bloons', apply: (t) => { t.isHoming = true; t.damage += 1; } }]
+          path1: [
+            { name: "Rapid Fire", cost: 500, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Lots More Darts", cost: 650, desc: "Fires 12 darts per volley instead of 8", apply: (t) => t.radialCount = 12 },
+            { name: "Fighter Plane", cost: 1000, desc: "Launches anti-MOAB missiles (+4 Dmg to blimps)", apply: (t) => { t.hasBombs = true; t.damage += 2; } },
+            { name: "Operation: Dart Storm", cost: 3000, desc: "16 high-velocity darts per volley (+3 Dmg)", apply: (t) => { t.radialCount = 16; t.damage += 3; } },
+            { name: "Sky Shredder", cost: 40000, desc: "32 dart volley at 3x speed + rapid missile pods (+12 Dmg)", apply: (t) => { t.radialCount = 32; t.fireRate *= 2.5; t.damage += 12; t.canPopLead = true; } }
+          ],
+          path2: [
+            { name: "Exploding Pineapples", cost: 200, desc: "Drops explosive pineapples onto track", apply: (t) => t.hasBombs = true },
+            { name: "Spy Plane", cost: 350, desc: "Detects Camo Bloons", apply: (t) => t.canSeeCamo = true },
+            { name: "Bomber Ace", cost: 900, desc: "Carpet bombs track with heavy explosives (+3 Dmg)", apply: (t) => { t.damage += 3; t.splashRadius = 40; } },
+            { name: "Ground Zero", cost: 18000, desc: "Huge megaton blast vaporizes bloon hordes (+10 Dmg)", apply: (t) => { t.damage += 10; t.fireRate *= 1.5; } },
+            { name: "Tsar Bomba", cost: 30000, desc: "Ultimate nuclear bomb stuns and annihilates all (+30 Dmg)", apply: (t) => { t.damage += 30; t.fireRate *= 2.0; } }
+          ],
+          path3: [
+            { name: "Sharper Darts", cost: 450, desc: "+4 Pierce", apply: (t) => t.pierce += 4 },
+            { name: "Centered Path", cost: 250, desc: "Expanded flight coverage and agility", apply: (t) => t.flySpeedMultiplier = 1.3 },
+            { name: "Neva-Miss Targeting", cost: 2200, desc: "All darts aggressively home in on bloons", apply: (t) => { t.isHoming = true; t.damage += 1; } },
+            { name: "Spectre", cost: 24000, desc: "Heavy gunship with rapid-fire dart gun & bomb mortar (+8 Dmg)", apply: (t) => { t.damage += 8; t.fireRate *= 2.2; } },
+            { name: "Flying Fortress", cost: 85000, desc: "3 independent turrets firing plasma, bombs & darts (+25 Dmg)", apply: (t) => { t.damage += 25; t.fireRate *= 3.0; t.canPopLead = true; } }
+          ]
         }
       },
       heli: {
-        name: 'Heli Pilot', icon: '🚁', category: 'military', cost: 950, range: 9999, fireRate: 1.4, projectileSpeed: 10, damage: 1, pierce: 2, color: '#16a34a', isHeli: true,
+        name: 'Heli Pilot', icon: '🚁', category: 'military', cost: 950, range: 190, fireRate: 1.1, projectileSpeed: 10, damage: 1, pierce: 3, color: '#166534', isHeli: true,
         upgrades: {
-          path1: [{ name: 'Quad Darts', cost: 350, desc: 'Fires 4 high-speed darts', apply: (t) => { t.pierce += 2; t.damage += 1; } }, { name: 'Pursuit', cost: 700, desc: 'Chopper flies to chase down bloons', apply: (t) => t.hasPursuit = true }],
-          path2: [{ name: 'Bigger Jets', cost: 220, desc: '+60% Flight Velocity', apply: (t) => t.flySpeedMultiplier = 1.6 }, { name: 'IFF Radar', cost: 400, desc: 'Detects Camo Bloons', apply: (t) => t.canSeeCamo = true }],
-          path3: [{ name: 'Faster Firing', cost: 280, desc: '+50% Attack Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Razor Rotors', cost: 900, desc: 'Spinning blades shred bloons & Lead', apply: (t) => { t.canPopLead = true; t.damage += 2; } }]
+          path1: [
+            { name: "Quad Darts", cost: 800, desc: "Fires 4 darts per volley", apply: (t) => { t.damage += 1; t.pierce += 2; } },
+            { name: "Pursuit", cost: 500, desc: "Autonomously hunts and pursues lead bloon", apply: (t) => t.hasPursuit = true },
+            { name: "Razor Rotors", cost: 1650, desc: "Spinning rotor blades shred bloons on contact (+3 Dmg)", apply: (t) => { t.damage += 3; t.canPopLead = true; } },
+            { name: "Apache Dartship", cost: 19600, desc: "Heavy machine gun & rocket pods (+8 Dmg, 2.5x speed)", apply: (t) => { t.damage += 8; t.fireRate *= 2.5; } },
+            { name: "Apache Prime", cost: 45000, desc: "Blazing plasma guns & quad laser pods disintegrate blimps (+25 Dmg)", apply: (t) => { t.damage += 25; t.fireRate *= 3.5; } }
+          ],
+          path2: [
+            { name: "Bigger Jets", cost: 300, desc: "+40% Flight Movement Speed", apply: (t) => t.flySpeedMultiplier = 1.4 },
+            { name: "IFR", cost: 600, desc: "Infrared vision detects Camo Bloons", apply: (t) => t.canSeeCamo = true },
+            { name: "Downdraft", cost: 2000, desc: "Rotor downdraft blows bloons back along track", apply: (t) => t.blowback = true },
+            { name: "Support Chinook", cost: 10500, desc: "Drops +$800 cash crates each round (+5 Dmg)", apply: (t) => { t.incomeBonus = (t.incomeBonus || 0) + 800; t.damage += 5; } },
+            { name: "Special POperations", cost: 30000, desc: "Elite commando heli drops +$2000 cash & heavy ordnance (+18 Dmg)", apply: (t) => { t.incomeBonus = (t.incomeBonus || 0) + 2000; t.damage += 18; t.fireRate *= 1.8; } }
+          ],
+          path3: [
+            { name: "Faster Darts", cost: 250, desc: "+50% Projectile Speed", apply: (t) => t.projectileSpeed *= 1.5 },
+            { name: "Faster Firing", cost: 350, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "MOAB Shove", cost: 3500, desc: "Pushes back and stuns MOAB blimps (+3 Dmg)", apply: (t) => { t.damage += 3; t.moabMultiplier = 4; } },
+            { name: "Comanche Defense", cost: 8500, desc: "Summons 3 Comanche escort choppers to assist (+8 Dmg)", apply: (t) => { t.damage += 8; t.fireRate *= 1.8; } },
+            { name: "Comanche Commander", cost: 32000, desc: "3 permanent high-power Comanche gunships flank at all times (+20 Dmg)", apply: (t) => { t.damage += 20; t.fireRate *= 2.8; } }
+          ]
         }
       },
       mortar: {
-        name: 'Mortar Monkey', icon: '💥', category: 'military', cost: 680, range: 9999, fireRate: 0.5, projectileSpeed: 6, damage: 2, splashRadius: 85, pierce: 20, isExplosive: true, canPopLead: true, color: '#334155', isMortar: true,
+        name: 'Mortar Monkey', icon: '🎯', category: 'military', cost: 700, range: 9999, fireRate: 0.5, projectileSpeed: 999, damage: 2, pierce: 1, color: '#334155', splashRadius: 65, canPopLead: true, isMortar: true,
         upgrades: {
-          path1: [{ name: 'Bigger Blast', cost: 300, desc: '+50% Blast Radius', apply: (t) => { t.splashRadius *= 1.5; t.damage += 1; } }, { name: 'Bloon Buster', cost: 800, desc: 'Deals triple damage to Ceramics', apply: (t) => t.damage += 3 }],
-          path2: [{ name: 'Faster Reload', cost: 240, desc: '+45% Attack Speed', apply: (t) => t.fireRate *= 1.45 }, { name: 'Rapid Reload', cost: 650, desc: '+80% Attack Speed', apply: (t) => t.fireRate *= 1.8 }],
-          path3: [{ name: 'Airburst Shells', cost: 250, desc: '+8 Pierce', apply: (t) => t.pierce += 8 }, { name: 'Signal Flare', cost: 750, desc: 'Artillery blast strips Camo status!', apply: (t) => { t.canSeeCamo = true; t.stripsCamo = true; } }]
+          path1: [
+            { name: "Bigger Blast", cost: 500, desc: "+35% Blast Radius", apply: (t) => t.splashRadius *= 1.35 },
+            { name: "Bloon Buster", cost: 500, desc: "+2 Damage per shell", apply: (t) => t.damage += 2 },
+            { name: "Shell Shock", cost: 900, desc: "Stuns bloons in blast (+3 Dmg)", apply: (t) => { t.damage += 3; t.splashRadius *= 1.2; } },
+            { name: "The Big One", cost: 7500, desc: "Gigantic blast radius (+8 Dmg, splash 110)", apply: (t) => { t.damage += 8; t.splashRadius = 110; } },
+            { name: "The Biggest One", cost: 36000, desc: "Apocalyptic craters obliterate entire hordes (+25 Dmg, splash 170)", apply: (t) => { t.damage += 25; t.splashRadius = 170; t.fireRate *= 1.4; } }
+          ],
+          path2: [
+            { name: "Faster Reload", cost: 250, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Rapid Reload", cost: 500, desc: "+45% Attack Speed", apply: (t) => t.fireRate *= 1.45 },
+            { name: "Heavy Shells", cost: 900, desc: "Deals extra damage to ceramics and blimps (+2 Dmg)", apply: (t) => { t.damage += 2; t.moabMultiplier = 3; } },
+            { name: "Artillery Battery", cost: 5500, desc: "Rapid 3x mortar barrage (+6 Dmg)", apply: (t) => { t.fireRate *= 3.0; t.damage += 6; } },
+            { name: "Pop and Awe", cost: 32000, desc: "5x Artillery fire rate & global concussive blast (+18 Dmg)", apply: (t) => { t.fireRate *= 4.5; t.damage += 18; } }
+          ],
+          path3: [
+            { name: "Increased Accuracy", cost: 200, desc: "Greatly narrows shell targeting spread", apply: (t) => t.accuracy = 1.0 },
+            { name: "Burny Stuff", cost: 500, desc: "Shells ignite bloons dealing fire damage over time", apply: (t) => { t.damage += 1; t.isFire = true; } },
+            { name: "Signal Flare", cost: 700, desc: "Strips Camo from all bloons caught in blast", apply: (t) => { t.stripsCamo = true; t.canSeeCamo = true; } },
+            { name: "Shattering Shells", cost: 11000, desc: "Strips Fortified armor from ceramics & MOABs (+6 Dmg)", apply: (t) => { t.damage += 6; t.stripsFortified = true; } },
+            { name: "Blooncineration", cost: 40000, desc: "Ultra-hot napalm incinerates armor and blimps (+24 Dmg)", apply: (t) => { t.damage += 24; t.fireRate *= 1.6; } }
+          ]
         }
       },
       dartling: {
-        name: 'Dartling Gunner', icon: '🔫', category: 'military', cost: 850, range: 9999, fireRate: 4.5, projectileSpeed: 12, damage: 1, pierce: 1, color: '#166534', isDartling: true,
+        name: 'Dartling Gunner', icon: '🔫', category: 'military', cost: 850, range: 9999, fireRate: 2.2, projectileSpeed: 11, damage: 1, pierce: 2, color: '#166534', isDartling: true,
         upgrades: {
-          path1: [{ name: 'Focused Firing', cost: 250, desc: 'Tight accurate laser stream', apply: (t) => t.range *= 1.2 }, { name: 'Laser Cannon', cost: 1100, desc: 'Piercing lasers melt Lead Bloons', apply: (t) => { t.pierce += 4; t.canPopLead = true; t.isLaser = true; } }],
-          path2: [{ name: 'Faster Barrel Spin', cost: 300, desc: '+60% Attack Speed', apply: (t) => t.fireRate *= 1.6 }, { name: 'Hydra Rocket Pods', cost: 1300, desc: 'Fires rapid explosive rockets', apply: (t) => { t.isExplosive = true; t.splashRadius = 45; t.damage += 2; } }],
-          path3: [{ name: 'Powerful Darts', cost: 280, desc: '+3 Pierce', apply: (t) => t.pierce += 3 }, { name: 'Buckshot', cost: 950, desc: 'Shoots 6 heavy shrapnel pellets', apply: (t) => { t.damage += 2; t.pierce += 5; } }]
+          path1: [
+            { name: "Focused Firing", cost: 250, desc: "Significantly tightens firing spread", apply: (t) => t.spreadNarrows = true },
+            { name: "Laser Shock", cost: 750, desc: "Electrifies bloons dealing bonus shock damage", apply: (t) => t.damage += 1 },
+            { name: "Laser Cannon", cost: 3750, desc: "Fires high-energy laser beams (+3 Dmg, melts frozen)", apply: (t) => { t.isLaser = true; t.damage += 3; t.pierce += 4; } },
+            { name: "Plasma Accelerator", cost: 11000, desc: "Continuous focused plasma beam melts bloons (+8 Dmg)", apply: (t) => { t.damage += 8; t.fireRate *= 1.5; t.canPopLead = true; } },
+            { name: "Ray of Doom", cost: 80000, desc: "Infinite pierce death ray of total annihilation (+30 Dmg)", apply: (t) => { t.damage += 30; t.pierce = 999; t.fireRate *= 2.0; } }
+          ],
+          path2: [
+            { name: "Advanced Targeting", cost: 150, desc: "Swivels 50% faster to target", apply: (t) => t.swivelSpeed = 2.0 },
+            { name: "Faster Firing", cost: 950, desc: "+50% Attack Speed", apply: (t) => t.fireRate *= 1.5 },
+            { name: "Hydra Rocket Pods", cost: 5250, desc: "Fires explosive micro-missiles (+3 Dmg, pops Lead)", apply: (t) => { t.damage += 3; t.splashRadius = 35; t.canPopLead = true; } },
+            { name: "Rocket Storm", cost: 5100, desc: "Massive salvo of hundreds of explosive rockets (+7 Dmg)", apply: (t) => { t.damage += 7; t.fireRate *= 2.0; } },
+            { name: "M.A.D", cost: 65000, desc: "Mega Anti-Device: Colossal missiles deal 10x damage to MOABs (+40 Dmg)", apply: (t) => { t.damage += 40; t.moabMultiplier = 10; } }
+          ],
+          path3: [
+            { name: "Faster Barrel Spin", cost: 400, desc: "+35% Attack Speed", apply: (t) => t.fireRate *= 1.35 },
+            { name: "Powerful Darts", cost: 600, desc: "+1 Dmg & +3 Pierce", apply: (t) => { t.damage += 1; t.pierce += 3; } },
+            { name: "Buckshot", cost: 3400, desc: "Heavy shotgun blasts knock bloons back (+4 Dmg)", apply: (t) => { t.damage += 4; t.knockback = true; } },
+            { name: "Bloon Area Denial System", cost: 12000, desc: "4-barrel shotgun turret sprays devastating shrapnel (+10 Dmg)", apply: (t) => { t.damage += 10; t.fireRate *= 1.8; } },
+            { name: "Bloon Exclusion Zone", cost: 58000, desc: "6 heavy shotgun barrels create impassable wall of fire (+25 Dmg)", apply: (t) => { t.damage += 25; t.fireRate *= 2.5; t.pierce += 15; } }
+          ]
         }
       },
-
-      // ===== MAGIC CATEGORY (5) =====
       ninja: {
-        name: 'Ninja Monkey', icon: '🥷', category: 'magic', cost: 480, range: 120, fireRate: 1.5, projectileSpeed: 11, damage: 1, pierce: 2, canSeeCamo: true, color: '#7f1d1d', isNinja: true,
+        name: 'Ninja Monkey', icon: '🥷', category: 'magic', cost: 500, range: 130, fireRate: 1.25, projectileSpeed: 10, damage: 1, pierce: 2, color: '#1e1b4b', canSeeCamo: true, isNinja: true,
         upgrades: {
-          path1: [{ name: 'Ninja Discipline', cost: 220, desc: '+35% Attack Speed & Range', apply: (t) => { t.fireRate *= 1.35; t.range += 15; } }, { name: 'Sharp Shurikens', cost: 400, desc: '+3 Pierce per Shuriken', apply: (t) => t.pierce += 3 }],
-          path2: [{ name: 'Distraction', cost: 250, desc: 'Knocks bloons backward on hit', apply: (t) => t.knockback = true }, { name: 'Flash Bomb', cost: 750, desc: 'Throws stun bombs, pops Lead', apply: (t) => { t.hasFlashBomb = true; t.canPopLead = true; } }],
-          path3: [{ name: 'Seeking Shuriken', cost: 240, desc: 'Shurikens home in on Bloons', apply: (t) => t.isHoming = true }, { name: 'Double Shot', cost: 680, desc: 'Throws 2 Shurikens at once', apply: (t) => t.doubleShot = true }]
+          path1: [
+            { name: "Ninja Discipline", cost: 300, desc: "+25 Range & +35% Attack Speed", apply: (t) => { t.range += 25; t.fireRate *= 1.35; } },
+            { name: "Sharp Shurikens", cost: 350, desc: "+3 Pierce", apply: (t) => t.pierce += 3 },
+            { name: "Double Shot", cost: 850, desc: "Throws 2 shurikens simultaneously", apply: (t) => { t.damage += 1; t.fireRate *= 1.2; } },
+            { name: "Bloonjitsu", cost: 2750, desc: "Throws 5 shurikens simultaneously (+2 Dmg)", apply: (t) => { t.damage += 2; t.pierce += 4; } },
+            { name: "Grandmaster Ninja", cost: 35000, desc: "Throws 8 shurikens at hyper-speed (+10 Dmg, pops Lead)", apply: (t) => { t.damage += 10; t.fireRate *= 2.5; t.canPopLead = true; } }
+          ],
+          path2: [
+            { name: "Distraction", cost: 350, desc: "Shurikens can knock bloons backwards", apply: (t) => t.knockback = true },
+            { name: "Counter-Espionage", cost: 500, desc: "Shurikens strip Camo from bloons", apply: (t) => t.stripsCamo = true },
+            { name: "Shinobi Tactics", cost: 1400, desc: "Buffs attack speed & pierce of nearby ninjas by 20%", apply: (t) => { t.fireRate *= 1.2; t.pierce += 3; } },
+            { name: "Bloon Sabotage", cost: 5200, desc: "Slows all bloons entering screen by 50% (+4 Dmg)", apply: (t) => { t.damage += 4; t.fireRate *= 1.4; } },
+            { name: "Grand Saboteur", cost: 22000, desc: "Cripples all blimps on spawn, removing 25% of their HP (+12 Dmg)", apply: (t) => { t.damage += 12; t.moabMultiplier = 4; } }
+          ],
+          path3: [
+            { name: "Seeking Shuriken", cost: 250, desc: "Shurikens actively home in on bloons", apply: (t) => t.isHoming = true },
+            { name: "Caltrops", cost: 400, desc: "Drops sharp ninja caltrops onto the track", apply: (t) => t.caltrops = true },
+            { name: "Flash Bomb", cost: 2250, desc: "Throws stun bombs that explode on impact (+3 Dmg)", apply: (t) => { t.damage += 3; t.splashRadius = 35; } },
+            { name: "Sticky Bomb", cost: 4500, desc: "Attaches timed high-explosive bombs to MOABs (+8 Dmg)", apply: (t) => { t.damage += 8; t.moabMultiplier = 5; } },
+            { name: "Master Bomber", cost: 40000, desc: "Attaches devastating flash sticky bombs to all blimps (+25 Dmg)", apply: (t) => { t.damage += 25; t.moabMultiplier = 10; } }
+          ]
         }
       },
       wizard: {
-        name: 'Wizard Monkey', icon: '🧙', category: 'magic', cost: 550, range: 135, fireRate: 1.0, projectileSpeed: 8.5, damage: 2, pierce: 3, isHoming: true, canPopLead: true, color: '#8b5cf6',
+        name: 'Wizard Monkey', icon: '🧙', category: 'magic', cost: 375, range: 125, fireRate: 0.9, projectileSpeed: 8, damage: 1, pierce: 3, color: '#6b21a8',
         upgrades: {
-          path1: [{ name: 'Arcane Blast', cost: 300, desc: '+2 Damage per shot', apply: (t) => t.damage += 2 }, { name: 'Arcane Mastery', cost: 800, desc: 'Huge Speed, +4 Damage', apply: (t) => { t.damage += 4; t.fireRate *= 1.5; } }],
-          path2: [{ name: 'Fireball', cost: 320, desc: 'Heavy Explosive Impact', apply: (t) => { t.hasFireball = true; t.splashRadius = 60; } }, { name: 'Wall of Fire', cost: 700, desc: 'Blazing wall that melts Lead', apply: (t) => t.damage += 3 }],
-          path3: [{ name: 'Guided Magic', cost: 180, desc: 'Spell tracks Camo Bloons', apply: (t) => t.canSeeCamo = true }, { name: 'Necromancer', cost: 950, desc: 'Reanimates popped bloons!', apply: (t) => t.isNecromancer = true }]
+          path1: [
+            { name: "Guided Magic", cost: 150, desc: "Arcane bolts navigate around track obstacles", apply: (t) => t.isHoming = true },
+            { name: "Arcane Blast", cost: 450, desc: "+1 Damage per bolt", apply: (t) => t.damage += 1 },
+            { name: "Arcane Mastery", cost: 1300, desc: "+3 Dmg, +35 Range & +5 Pierce", apply: (t) => { t.damage += 3; t.range += 35; t.pierce += 5; } },
+            { name: "Arcane Spike", cost: 10000, desc: "High-frequency arcane spikes pierce MOABs (+8 Dmg)", apply: (t) => { t.damage += 8; t.fireRate *= 1.6; } },
+            { name: "Archmage", cost: 32000, desc: "Master of all magic fires lightning, fire & arcane (+22 Dmg)", apply: (t) => { t.damage += 22; t.fireRate *= 2.4; t.canPopLead = true; } }
+          ],
+          path2: [
+            { name: "Fireball", cost: 250, desc: "Launches explosive fireballs that pop Lead", apply: (t) => { t.damage += 1; t.canPopLead = true; t.isExplosive = true; } },
+            { name: "Wall of Fire", cost: 900, desc: "Summons a raging wall of fire onto the track (+2 Dmg)", apply: (t) => { t.damage += 2; t.isFire = true; } },
+            { name: "Dragon's Breath", cost: 3000, desc: "Continuous stream of roaring dragon flames (+4 Dmg)", apply: (t) => { t.damage += 4; t.fireRate *= 2.0; } },
+            { name: "Summon Phoenix", cost: 5000, desc: "Summons a flaming phoenix patrolling track (+8 Dmg)", apply: (t) => { t.damage += 8; t.range += 45; } },
+            { name: "Wizard Lord Phoenix", cost: 50000, desc: "Transforms into ultimate fiery demigod with twin phoenixes (+25 Dmg)", apply: (t) => { t.damage += 25; t.fireRate *= 3.0; } }
+          ],
+          path3: [
+            { name: "Intense Magic", cost: 300, desc: "+4 Pierce", apply: (t) => t.pierce += 4 },
+            { name: "Monkey Sense", cost: 300, desc: "Detects Camo Bloons", apply: (t) => t.canSeeCamo = true },
+            { name: "Shimmer", cost: 1700, desc: "Radial arcane flash strips Camo from all bloons (+2 Dmg)", apply: (t) => { t.stripsCamo = true; t.damage += 2; } },
+            { name: "Necromancer: Unpopped Army", cost: 2800, desc: "Resurrects popped bloons as zombies attacking backwards", apply: (t) => { t.damage += 4; t.pierce += 10; } },
+            { name: "Prince of Darkness", cost: 24000, desc: "Summons giant zombie BFBs & ZOMGs that crush bloon waves (+18 Dmg)", apply: (t) => { t.damage += 18; t.fireRate *= 1.8; } }
+          ]
         }
       },
       super: {
-        name: 'Super Monkey', icon: '🦸', category: 'magic', cost: 1400, range: 160, fireRate: 7.0, projectileSpeed: 13, damage: 1, pierce: 2, color: '#f59e0b', isSuper: true,
+        name: 'Super Monkey', icon: '🦸', category: 'magic', cost: 2500, range: 150, fireRate: 15, projectileSpeed: 14, damage: 1, pierce: 2, color: '#3b82f6',
         upgrades: {
-          path1: [{ name: 'Laser Blasts', cost: 950, desc: 'Pops Frozen Bloons & +2 Pierce', apply: (t) => { t.pierce += 2; t.isLaser = true; } }, { name: 'Plasma Blasts', cost: 1700, desc: 'Double Speed & Melts Lead', apply: (t) => { t.fireRate *= 1.6; t.damage += 1; t.canPopLead = true; } }],
-          path2: [{ name: 'Super Range', cost: 650, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Epic Darts', cost: 1100, desc: '+4 Pierce & Hyperspeed', apply: (t) => { t.pierce += 4; t.projectileSpeed *= 1.3; } }],
-          path3: [{ name: 'Ultravision', cost: 700, desc: 'Super Camo Detection visor', apply: (t) => t.canSeeCamo = true }, { name: 'Dark Knight', cost: 2400, desc: 'Teleports, Blades pop Moabs', apply: (t) => { t.damage += 3; t.moabMultiplier = 3; } }]
+          path1: [
+            { name: "Laser Blasts", cost: 2500, desc: "Twin laser beams pop frozen bloons (+1 Dmg, +2 Pierce)", apply: (t) => { t.damage += 1; t.pierce += 2; t.isLaser = true; } },
+            { name: "Plasma Blasts", cost: 4500, desc: "Blazing plasma bolts melt Lead (+2 Dmg, +50% Speed)", apply: (t) => { t.damage += 2; t.fireRate *= 1.5; t.canPopLead = true; } },
+            { name: "Sun Avatar", cost: 20000, desc: "Fires 3 continuous divine golden sun beams (+5 Dmg)", apply: (t) => { t.damage += 5; t.pierce += 8; t.range += 35; } },
+            { name: "Sun Temple", cost: 100000, desc: "Supreme sun temple radiates devastating destruction (+18 Dmg)", apply: (t) => { t.damage += 18; t.range += 60; t.pierce += 25; } },
+            { name: "True Sun God", cost: 500000, desc: "The most powerful entity in Bloons history (+60 Dmg, obliterates all)", apply: (t) => { t.damage += 60; t.range += 100; t.fireRate *= 2.0; t.pierce += 60; } }
+          ],
+          path2: [
+            { name: "Super Range", cost: 1000, desc: "+40 Range & +2 Pierce", apply: (t) => { t.range += 40; t.pierce += 2; } },
+            { name: "Epic Range", cost: 1400, desc: "+50 Range & +3 Pierce", apply: (t) => { t.range += 50; t.pierce += 3; } },
+            { name: "Robo Monkey", cost: 7000, desc: "Twin cybernetic arms target bloons independently (+3 Dmg)", apply: (t) => { t.damage += 3; t.fireRate *= 1.6; } },
+            { name: "Tech Terror", cost: 19000, desc: "Advanced cyborg lasers vaporize waves on command (+8 Dmg)", apply: (t) => { t.damage += 8; t.fireRate *= 2.0; } },
+            { name: "The Anti-Bloon", cost: 90000, desc: "Ultimate cyborg weapon annihilates everything in range (+35 Dmg)", apply: (t) => { t.damage += 35; t.fireRate *= 2.8; } }
+          ],
+          path3: [
+            { name: "Knockback", cost: 3000, desc: "Knocks back bloons & slows down blimps", apply: (t) => t.knockback = true },
+            { name: "Ultravision", cost: 1200, desc: "Detects Camo Bloons & +25 Range", apply: (t) => { t.canSeeCamo = true; t.range += 25; } },
+            { name: "Dark Knight", cost: 5600, desc: "Shadow blades carve through ceramics & MOABs (+4 Dmg)", apply: (t) => { t.damage += 4; t.moabMultiplier = 3; } },
+            { name: "Dark Champion", cost: 55000, desc: "Dark matter blasts pierce all defenses (+15 Dmg)", apply: (t) => { t.damage += 15; t.fireRate *= 1.8; t.moabMultiplier = 5; } },
+            { name: "Legend of the Night", cost: 240000, desc: "Black hole defense: Invincible guardian consumes all leaks (+50 Dmg)", apply: (t) => { t.damage += 50; t.range += 80; t.fireRate *= 2.5; } }
+          ]
         }
       },
       alchemist: {
-        name: 'Alchemist', icon: '⚗️', category: 'magic', cost: 620, range: 120, fireRate: 0.8, projectileSpeed: 8, damage: 2, splashRadius: 55, pierce: 10, isExplosive: true, canPopLead: true, color: '#a855f7', isAlchemist: true,
+        name: 'Alchemist', icon: '⚗️', category: 'magic', cost: 550, range: 115, fireRate: 0.8, projectileSpeed: 8, damage: 1, pierce: 1, color: '#f59e0b', splashRadius: 40, isAlchemist: true,
         upgrades: {
-          path1: [{ name: 'Larger Potions', cost: 250, desc: '+40% Potion Splash Radius', apply: (t) => t.splashRadius *= 1.4 }, { name: 'Berserker Brew', cost: 900, desc: 'Buffs adjacent allies: +1 Dmg, +20% Speed', apply: (t) => t.hasBuffAura = true }],
-          path2: [{ name: 'Stronger Acid', cost: 220, desc: '+2 Potion Damage', apply: (t) => t.damage += 2 }, { name: 'Acidic Mixture Dip', cost: 450, desc: 'Grants nearby allies ability to pop Lead', apply: (t) => t.buffsLeadPopping = true }],
-          path3: [{ name: 'Faster Throwing', cost: 180, desc: '+40% Attack Speed', apply: (t) => t.fireRate *= 1.4 }, { name: 'Lead to Gold', cost: 800, desc: 'Turn Lead Bloons into gold ($50 bonus)', apply: (t) => t.leadToGold = true }]
+          path1: [
+            { name: "Larger Potions", cost: 250, desc: "+30% Splash Radius", apply: (t) => t.splashRadius *= 1.3 },
+            { name: "Acidic Mixture Dip", cost: 450, desc: "Buffs nearby allies so their attacks pop Lead", apply: (t) => t.buffsLead = true },
+            { name: "Berserker Brew", cost: 1250, desc: "Potent elixir gives nearby allies +20% Attack Speed", apply: (t) => t.givesSpeedBuff = true },
+            { name: "Stronger Stimulant", cost: 3000, desc: "Stimulant grants +35% Attack Speed & +2 Dmg to allies", apply: (t) => { t.damage += 2; t.fireRate *= 1.35; } },
+            { name: "Permanent Brew", cost: 60000, desc: "All towers on map gain permanent ultra-stimulant buffs", apply: (t) => { t.permanentBrew = true; t.damage += 8; } }
+          ],
+          path2: [
+            { name: "Stronger Acid", cost: 300, desc: "Acid lasts longer & dissolves 2 layers", apply: (t) => t.damage += 1 },
+            { name: "Fire Bomb", cost: 450, desc: "Potions ignite bloons in flaming explosions", apply: (t) => { t.isFire = true; t.canPopLead = true; } },
+            { name: "Unstable Concoction", cost: 3000, desc: "Injected MOABs explode upon death, damaging blimps", apply: (t) => { t.unstableConcoction = true; t.damage += 3; } },
+            { name: "Transforming Tonic", cost: 6000, desc: "Transforms into giant acid-throwing monster (+8 Dmg)", apply: (t) => { t.damage += 8; t.fireRate *= 1.8; } },
+            { name: "Total Transformation", cost: 45000, desc: "Transforms 5 nearby monkeys into giant acid monsters (+22 Dmg)", apply: (t) => { t.damage += 22; t.fireRate *= 2.5; } }
+          ],
+          path3: [
+            { name: "Faster Throwing", cost: 650, desc: "+40% Attack Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Acid Pool", cost: 600, desc: "Leaves puddles of corrosive acid on track", apply: (t) => t.acidPool = true },
+            { name: "Lead to Gold", cost: 1000, desc: "Instantly transmutes Lead bloons into +$50 bonus gold", apply: (t) => { t.leadToGold = true; t.canPopLead = true; } },
+            { name: "Rubber to Gold", cost: 2750, desc: "Transmutes bloons into gold, earning 3x cash on pops", apply: (t) => { t.rubberToGold = true; t.damage += 3; } },
+            { name: "Bloon Master Alchemist", cost: 40000, desc: "Transmutes entire ZOMG blimps into red bloons instantly", apply: (t) => { t.bma = true; t.damage += 20; } }
+          ]
         }
       },
       druid: {
-        name: 'Druid', icon: '🌿', category: 'magic', cost: 400, range: 125, fireRate: 0.95, projectileSpeed: 9, damage: 1, pierce: 1, color: '#047857', isDruid: true,
+        name: 'Druid', icon: '🌿', category: 'magic', cost: 400, range: 120, fireRate: 0.95, projectileSpeed: 9, damage: 1, pierce: 2, color: '#15803d', isDruid: true,
         upgrades: {
-          path1: [{ name: 'Hard Thorns', cost: 200, desc: 'Thorns pop Lead & Frozen Bloons', apply: (t) => t.canPopLead = true }, { name: 'Heart of Thunder', cost: 750, desc: 'Fires chain lightning bouncing to 6 bloons', apply: (t) => { t.hasLightning = true; t.damage += 2; } }],
-          path2: [{ name: 'Thorn Swarm', cost: 180, desc: 'Throws 8 thorns in a spread cone', apply: (t) => t.thornCount = 8 }, { name: 'Heart of Oak', cost: 400, desc: 'De-regrows bloons permanently', apply: (t) => t.stripsRegrow = true }],
-          path3: [{ name: 'Druidic Reach', cost: 150, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Druid of the Jungle', cost: 800, desc: 'Vines ensnare and crush bloons instantly', apply: (t) => { t.damage += 3; t.pierce += 4; } }]
+          path1: [
+            { name: "Hard Thorns", cost: 250, desc: "Thorns pop Lead bloons & +2 Pierce", apply: (t) => { t.canPopLead = true; t.pierce += 2; } },
+            { name: "Heart of Thunder", cost: 950, desc: "Releases chain lightning that arcs across bloons", apply: (t) => t.hasLightning = true },
+            { name: "Druid of the Storm", cost: 1650, desc: "Creates tornadoes that blow bloons backwards", apply: (t) => { t.tornadoes = true; t.damage += 2; } },
+            { name: "Ball Lightning", cost: 5100, desc: "Conjures giant electrified plasma balls (+6 Dmg)", apply: (t) => { t.damage += 6; t.pierce += 10; } },
+            { name: "Superstorm", cost: 65000, desc: "Devastating hurricanes blow back even ZOMG blimps (+25 Dmg)", apply: (t) => { t.damage += 25; t.fireRate *= 1.6; } }
+          ],
+          path2: [
+            { name: "Thorn Swarm", cost: 250, desc: "Throws 8 thorns in wide cone instead of 5", apply: (t) => t.thornCount = 8 },
+            { name: "Heart of Oak", cost: 350, desc: "Removes Regrow property from bloons", apply: (t) => t.stripsRegrow = true },
+            { name: "Druid of the Jungle", cost: 950, desc: "Vines strangle & dissolve bloons anywhere on track (+3 Dmg)", apply: (t) => { t.damage += 3; t.range += 35; } },
+            { name: "Jungle's Bounty", cost: 4600, desc: "Nature grants +$1000 cash at end of each round", apply: (t) => t.incomeBonus = (t.incomeBonus || 0) + 1000 },
+            { name: "Spirit of the Forest", cost: 35000, desc: "Covers entire track with permanent lethal brambles (+18 Dmg)", apply: (t) => { t.damage += 18; t.incomeBonus = (t.incomeBonus || 0) + 2000; } }
+          ],
+          path3: [
+            { name: "Druidic Reach", cost: 100, desc: "+35 Range", apply: (t) => t.range += 35 },
+            { name: "Heart of Vengeance", cost: 300, desc: "Attacks faster when lives are low", apply: (t) => t.fireRate *= 1.25 },
+            { name: "Druid of Wrath", cost: 650, desc: "Attacks faster the longer it attacks (+2 Dmg)", apply: (t) => { t.damage += 2; t.fireRate *= 1.4; } },
+            { name: "Poplust", cost: 2500, desc: "Empowers attack speed & pierce of nearby druids (+5 Dmg)", apply: (t) => { t.damage += 5; t.pierce += 6; } },
+            { name: "Avatar of Wrath", cost: 45000, desc: "Furious nature god deals catastrophic scaling damage (+25 Dmg)", apply: (t) => { t.damage += 25; t.fireRate *= 2.5; } }
+          ]
         }
       },
-
-      // ===== SUPPORT CATEGORY (6) =====
       farm: {
-        name: 'Banana Farm', icon: '🍌', category: 'support', cost: 850, range: 80, fireRate: 0, damage: 0, color: '#eab308', isFarm: true, incomeBonus: 160,
+        name: 'Banana Farm', icon: '🍌', category: 'support', cost: 1250, range: 0, fireRate: 0, projectileSpeed: 8, damage: 0, pierce: 1, color: '#eab308', isFarm: true, incomeBonus: 100,
         upgrades: {
-          path1: [{ name: 'More Bananas', cost: 400, desc: '+$140 cash per round ($300 total)', apply: (t) => t.incomeBonus += 140 }, { name: 'Banana Plantation', cost: 1200, desc: '+$350 cash per round ($650 total)', apply: (t) => t.incomeBonus += 350 }],
-          path2: [{ name: 'Salvation Crates', cost: 280, desc: 'Automatic cash collection', apply: (t) => t.autoCollect = true }, { name: 'Banana Bank', cost: 1100, desc: 'Generates extra 10% compound dividend', apply: (t) => t.incomeBonus += 250 }],
-          path3: [{ name: 'EZ Collect', cost: 220, desc: '+$80 cash per round', apply: (t) => t.incomeBonus += 80 }, { name: 'Marketplace', cost: 1400, desc: 'Huge shipping market: +$450/round', apply: (t) => t.incomeBonus += 450 }]
+          path1: [
+            { name: "Increased Production", cost: 500, desc: "Earns +$60 extra cash each round", apply: (t) => t.incomeBonus += 60 },
+            { name: "Greater Production", cost: 600, desc: "Earns +$120 extra cash each round", apply: (t) => t.incomeBonus += 120 },
+            { name: "Banana Plantation", cost: 3000, desc: "Earns +$350 extra cash each round", apply: (t) => t.incomeBonus += 350 },
+            { name: "Banana Research Facility", cost: 20000, desc: "Earns +$1400 massive cash each round", apply: (t) => t.incomeBonus += 1400 },
+            { name: "Banana Central", cost: 100000, desc: "Earns +$4500 cash/round & buffs income of all farms by 25%", apply: (t) => t.incomeBonus += 4500 }
+          ],
+          path2: [
+            { name: "EZ Collect", cost: 250, desc: "Auto-harvests bananas instantly", apply: (t) => t.autoCollect = true },
+            { name: "Banana Salvage", cost: 400, desc: "Increases sell back value to 85%", apply: (t) => t.sellMultiplier = 0.85 },
+            { name: "Monkey Bank", cost: 3600, desc: "Earns +$450/round with compound interest", apply: (t) => t.incomeBonus += 450 },
+            { name: "IMF Loan", cost: 7500, desc: "Generates +$1000 cash/round", apply: (t) => t.incomeBonus += 1000 },
+            { name: "Monkey-Nomics", cost: 25000, desc: "Supreme financial monopoly generates +$3000 cash/round", apply: (t) => t.incomeBonus += 3000 }
+          ],
+          path3: [
+            { name: "Long Life Bananas", cost: 300, desc: "Bananas persist longer on screen", apply: (t) => t.bananaLife = 20 },
+            { name: "Valuable Bananas", cost: 800, desc: "Bananas are worth 25% more (+80 cash)", apply: (t) => t.incomeBonus += 80 },
+            { name: "Marketplace", cost: 2900, desc: "Auto-deposits +$400 cash each round", apply: (t) => t.incomeBonus += 400 },
+            { name: "Central Market", cost: 14500, desc: "Generates +$1400 cash/round & buffs Merchantmen", apply: (t) => t.incomeBonus += 1400 },
+            { name: "Monkey Wall Street", cost: 60000, desc: "Generates +$4000 cash/round & automatically restores lives", apply: (t) => t.incomeBonus += 4000 }
+          ]
         }
       },
       spikes: {
-        name: 'Spike Factory', icon: '⚙️', category: 'support', cost: 650, range: 110, fireRate: 0.5, damage: 1, color: '#64748b', isSpikes: true,
+        name: 'Spike Factory', icon: '⚙️', category: 'support', cost: 1000, range: 105, fireRate: 0.45, projectileSpeed: 8, damage: 1, pierce: 1, color: '#64748b', isSpikes: true, spikePileSize: 5,
         upgrades: {
-          path1: [{ name: 'Bigger Stacks', cost: 250, desc: '+5 spikes per pile', apply: (t) => t.spikePileSize = (t.spikePileSize || 5) + 5 }, { name: 'White Hot Spikes', cost: 550, desc: 'Spikes pop Lead Bloons', apply: (t) => t.canPopLead = true }],
-          path2: [{ name: 'Faster Production', cost: 280, desc: '+50% Spike Production Rate', apply: (t) => t.fireRate *= 1.5 }, { name: 'Even Faster Production', cost: 600, desc: '+80% Spike Production Rate', apply: (t) => t.fireRate *= 1.8 }],
-          path3: [{ name: 'Long Reach', cost: 180, desc: '+40% Placement Radius', apply: (t) => t.range *= 1.4 }, { name: 'Spike Storm', cost: 950, desc: 'Each pile has 20 spikes and deals 2 damage', apply: (t) => { t.damage += 1; t.spikePileSize = 20; } }]
+          path1: [
+            { name: "Bigger Stacks", cost: 800, desc: "Each pile contains 10 spikes", apply: (t) => t.spikePileSize = 10 },
+            { name: "White Hot Spikes", cost: 800, desc: "Spikes pop Lead bloons", apply: (t) => t.canPopLead = true },
+            { name: "Spiked Balls", cost: 2300, desc: "Heavy iron spikes shred ceramics (+3 Dmg)", apply: (t) => { t.damage += 3; t.spikePileSize = 15; } },
+            { name: "Spiked Mines", cost: 9500, desc: "Spikes explode upon contact, dealing AoE damage (+8 Dmg)", apply: (t) => { t.damage += 8; t.splashRadius = 45; } },
+            { name: "Super Mines", cost: 125000, desc: "Massive nuclear mines vaporize ZOMGs (+30 Dmg, splash 90)", apply: (t) => { t.damage += 30; t.splashRadius = 90; t.fireRate *= 1.5; } }
+          ],
+          path2: [
+            { name: "Faster Production", cost: 700, desc: "+40% Production Speed", apply: (t) => t.fireRate *= 1.4 },
+            { name: "Even Faster Production", cost: 900, desc: "+50% Production Speed", apply: (t) => t.fireRate *= 1.5 },
+            { name: "MOAB SHREDR", cost: 2700, desc: "Spikes deal 4x damage to MOAB class blimps (+2 Dmg)", apply: (t) => { t.moabMultiplier = 4; t.damage += 2; } },
+            { name: "Spike Storm", cost: 5000, desc: "Covers entire track with emergency spikes (+6 Dmg)", apply: (t) => { t.damage += 6; t.fireRate *= 1.8; } },
+            { name: "Carpet of Spikes", cost: 40000, desc: "Automatically blankets entire track with spikes every 15s (+18 Dmg)", apply: (t) => { t.damage += 18; t.fireRate *= 2.5; } }
+          ],
+          path3: [
+            { name: "Long Reach", cost: 150, desc: "+35 Range to place spikes further", apply: (t) => t.range += 35 },
+            { name: "Directed Spikes", cost: 200, desc: "Places spikes right at track choke points", apply: (t) => t.range += 20 },
+            { name: "Long Life Spikes", cost: 1400, desc: "Spikes persist for 3 full rounds", apply: (t) => t.spikeLife = 3 },
+            { name: "Deadly Spikes", cost: 3500, desc: "Ultra-sharp steel spikes pop 20 bloons each (+4 Dmg)", apply: (t) => { t.damage += 4; t.spikePileSize = 25; } },
+            { name: "Perma-Spike", cost: 30000, desc: "Permanent spikes with 50 pierce that never expire (+15 Dmg)", apply: (t) => { t.damage += 15; t.spikePileSize = 50; } }
+          ]
         }
       },
       village: {
-        name: 'Monkey Village', icon: '🛖', category: 'support', cost: 700, range: 130, fireRate: 0, damage: 0, color: '#b45309', isVillage: true,
+        name: 'Monkey Village', icon: '🛖', category: 'support', cost: 1200, range: 160, fireRate: 0, projectileSpeed: 8, damage: 0, pierce: 1, color: '#ca8a04', isVillage: true, discountPercent: 15,
         upgrades: {
-          path1: [{ name: 'Bigger Radius', cost: 220, desc: '+35% Aura Radius', apply: (t) => t.range *= 1.35 }, { name: 'Jungle Drums', cost: 650, desc: 'Grants +20% Attack Speed to all nearby towers', apply: (t) => t.drumsBuff = true }],
-          path2: [{ name: 'Grow Blocker', cost: 200, desc: 'Stops regrow bloons from multiplying', apply: (t) => t.blockGrow = true }, { name: 'Radar Scanner', cost: 750, desc: 'Grants Camo detection to ALL towers in radius', apply: (t) => t.grantsCamo = true }],
-          path3: [{ name: 'Monkey Business', cost: 300, desc: '-15% discount on all upgrades in aura', apply: (t) => t.discountPercent = 15 }, { name: 'Monkey Commerce', cost: 600, desc: '-25% total discount on all upgrades in aura', apply: (t) => t.discountPercent = 25 }]
+          path1: [
+            { name: "Bigger Radius", cost: 400, desc: "+35 Village Aura Radius", apply: (t) => t.range += 35 },
+            { name: "Jungle Drums", cost: 1500, desc: "+15% Attack Speed to all towers in radius", apply: (t) => t.hasJungleDrums = true },
+            { name: "Primary Training", cost: 700, desc: "+1 Pierce & Range to all Primary towers", apply: (t) => t.primaryTraining = true },
+            { name: "Primary Mentoring", cost: 2500, desc: "-15% upgrade costs for Primary towers", apply: (t) => t.discountPercent = Math.max(t.discountPercent || 0, 25) },
+            { name: "Primary Expertise", cost: 25000, desc: "Village fires giant ballista bolts (+25 Dmg) & massively buffs Primary", apply: (t) => { t.damage = 25; t.fireRate = 0.8; t.range += 50; } }
+          ],
+          path2: [
+            { name: "Grow Blocker", cost: 250, desc: "Prevents bloons from regrowing layers in radius", apply: (t) => t.growBlocker = true },
+            { name: "Radar Scanner", cost: 2000, desc: "Grants Camo Detection to ALL towers in radius", apply: (t) => t.radarScanner = true },
+            { name: "Monkey Intelligence Bureau", cost: 7500, desc: "All towers in radius can damage ANY bloon type", apply: (t) => t.mib = true },
+            { name: "Call to Arms", cost: 20000, desc: "+35% Attack Speed & Pierce to all towers in radius", apply: (t) => t.hasJungleDrums = true },
+            { name: "Homeland Defense", cost: 40000, desc: "Doubles attack speed & pierce of ALL towers across the whole map", apply: (t) => t.homeland = true }
+          ],
+          path3: [
+            { name: "Monkey Business", cost: 500, desc: "10% discount on all tower and upgrade purchases", apply: (t) => t.discountPercent = Math.max(t.discountPercent || 0, 10) },
+            { name: "Monkey Commerce", cost: 500, desc: "15% discount on all tower and upgrade purchases", apply: (t) => t.discountPercent = Math.max(t.discountPercent || 0, 15) },
+            { name: "Monkey Town", cost: 10000, desc: "All towers in radius earn +50% extra cash per pop", apply: (t) => t.monkeyTown = true },
+            { name: "Monkey City", cost: 3000, desc: "+15% cash generation to all farms & +1 free Dart Monkey per round", apply: (t) => t.monkeyCity = true },
+            { name: "Monkeyopolis", cost: 20000, desc: "Absorbs nearby farms into an ultra-high income metropolis", apply: (t) => t.incomeBonus = (t.incomeBonus || 0) + 2500 }
+          ]
         }
       },
       engineer: {
-        name: 'Engineer Monkey', icon: '🔧', category: 'support', cost: 450, range: 120, fireRate: 1.1, projectileSpeed: 9.5, damage: 1, pierce: 3, color: '#f59e0b', isEngineer: true,
+        name: 'Engineer Monkey', icon: '🔧', category: 'support', cost: 400, range: 120, fireRate: 1.1, projectileSpeed: 9.5, damage: 1, pierce: 3, color: '#f59e0b', isEngineer: true,
         upgrades: {
-          path1: [{ name: 'Sentry Gun', cost: 320, desc: 'Constructs automated Sentry Turrets on track', apply: (t) => t.hasSentries = true }, { name: 'Sentry Expert', cost: 850, desc: 'Sentries fire high-speed plasma & pop Lead', apply: (t) => { t.sentryExpert = true; t.canPopLead = true; } }],
-          path2: [{ name: 'Faster Engineering', cost: 220, desc: '+50% Attack & Construction Speed', apply: (t) => t.fireRate *= 1.5 }, { name: 'Cleansing Foam', cost: 550, desc: 'Nails strip Camo & Regrow properties', apply: (t) => { t.stripsCamo = true; t.canSeeCamo = true; } }],
-          path3: [{ name: 'Larger Service Area', cost: 180, desc: '+35% Range', apply: (t) => t.range *= 1.35 }, { name: 'Pin', cost: 450, desc: 'Nails pin and freeze bloons briefly', apply: (t) => t.pinsBloons = true }]
+          path1: [
+            { name: "Sentry Gun", cost: 500, desc: "Deploys automated sentry turrets on track", apply: (t) => t.hasSentries = true },
+            { name: "Faster Engineering", cost: 400, desc: "Constructs sentries 50% faster & +35% attack speed", apply: (t) => t.fireRate *= 1.35 },
+            { name: "Sprockets", cost: 950, desc: "Engineer & sentries attack 50% faster (+1 Dmg)", apply: (t) => { t.fireRate *= 1.5; t.damage += 1; } },
+            { name: "Sentry Expert", cost: 2600, desc: "Deploys crushing, laser & frost sentries (+4 Dmg)", apply: (t) => { t.damage += 4; t.sentryExpert = true; t.canPopLead = true; } },
+            { name: "Sentry Champion", cost: 32000, desc: "Deploys high-tech plasma sentries that melt blimps (+15 Dmg)", apply: (t) => { t.damage += 15; t.fireRate *= 2.2; } }
+          ],
+          path2: [
+            { name: "Larger Service Area", cost: 550, desc: "+35 Range", apply: (t) => t.range += 35 },
+            { name: "Deconstruction", cost: 350, desc: "Bonus damage to fortified bloons and MOAB blimps", apply: (t) => { t.damage += 1; t.moabMultiplier = 3; } },
+            { name: "Cleansing Foam", cost: 850, desc: "Sprays foam onto track that strips Camo & Regrow", apply: (t) => { t.stripsCamo = true; t.canSeeCamo = true; } },
+            { name: "Overclock", cost: 12000, desc: "Overclocks target tower granting +66% Attack Speed (+6 Dmg)", apply: (t) => { t.damage += 6; t.fireRate *= 1.66; } },
+            { name: "Ultraboost", cost: 75000, desc: "Permanent stacking attack speed boosts for all towers (+20 Dmg)", apply: (t) => { t.damage += 20; t.fireRate *= 2.5; } }
+          ],
+          path3: [
+            { name: "Oversize Nails", cost: 450, desc: "+3 Pierce & pops frozen bloons", apply: (t) => t.pierce += 3 },
+            { name: "Pin", cost: 200, desc: "Nails pin bloons in place temporarily", apply: (t) => t.pinsBloons = true },
+            { name: "Double Gun", cost: 450, desc: "Fires 2 heavy nail guns simultaneously", apply: (t) => { t.damage += 1; t.fireRate *= 1.35; } },
+            { name: "Bloon Trap", cost: 3500, desc: "Places a trap on track that captures bloons for +$500 cash", apply: (t) => { t.damage += 4; t.incomeBonus = (t.incomeBonus || 0) + 500; } },
+            { name: "XXL Trap", cost: 54000, desc: "Giant trap devours entire MOAB & BFB blimps for +$2000 cash (+18 Dmg)", apply: (t) => { t.damage += 18; t.incomeBonus = (t.incomeBonus || 0) + 2000; } }
+          ]
         }
       },
       beast: {
-        name: 'Beast Handler', icon: '🦕', category: 'support', cost: 580, range: 135, fireRate: 0.9, projectileSpeed: 10, damage: 2, pierce: 3, color: '#d97706', isBeast: true,
+        name: 'Beast Handler', icon: '🦕', category: 'support', cost: 250, range: 110, fireRate: 0.9, projectileSpeed: 10, damage: 1, pierce: 3, color: '#d97706', isBeast: true,
         upgrades: {
-          path1: [{ name: 'Microraptor', cost: 280, desc: 'Fast hunting raptor lunges at bloons', apply: (t) => { t.damage += 1; t.fireRate *= 1.3; } }, { name: 'Velociraptor', cost: 850, desc: 'Heavy raptor deals 5 damage & shreds blimps', apply: (t) => { t.damage += 3; t.canPopLead = true; t.moabMultiplier = 3; } }],
-          path2: [{ name: 'Piranha Swarm', cost: 240, desc: 'Aquatic beasts bite in wide radius', apply: (t) => t.pierce += 4 }, { name: 'Great White', cost: 900, desc: 'Massive shark bites bloons for huge damage', apply: (t) => t.damage += 4 }],
-          path3: [{ name: 'Gyrfalcon', cost: 220, desc: 'Aerial raptor dive-bombs bloons', apply: (t) => t.range *= 1.4 }, { name: 'Horned Owl', cost: 700, desc: 'Carries bloons backwards away from exit', apply: (t) => { t.knockback = true; t.canSeeCamo = true; } }]
+          path1: [
+            { name: "Piranha", cost: 190, desc: "Summons aquatic piranha that chomps bloons", apply: (t) => t.pierce += 2 },
+            { name: "Barracuda", cost: 850, desc: "Ferocious barracuda shreds bloons (+2 Dmg)", apply: (t) => { t.damage += 2; t.fireRate *= 1.3; } },
+            { name: "Great White", cost: 2600, desc: "Great white shark drags bloons under (+5 Dmg)", apply: (t) => { t.damage += 5; t.pierce += 5; } },
+            { name: "Orca", cost: 11500, desc: "Apex orca leaps and clamps onto MOAB blimps (+12 Dmg)", apply: (t) => { t.damage += 12; t.moabMultiplier = 4; } },
+            { name: "Megalodon", cost: 55000, desc: "Colossal megalodon devours BFBs & ZOMGs whole (+35 Dmg)", apply: (t) => { t.damage += 35; t.moabMultiplier = 8; } }
+          ],
+          path2: [
+            { name: "Microraptor", cost: 180, desc: "Agile raptor lunges and slashes bloons (+1 Dmg)", apply: (t) => { t.damage += 1; t.fireRate *= 1.25; } },
+            { name: "Velociraptor", cost: 920, desc: "Fast sickle claws shred ceramics (+3 Dmg)", apply: (t) => { t.damage += 3; t.canPopLead = true; } },
+            { name: "Tyrannosaurus Rex", cost: 9800, desc: "Furious T-Rex stomps and stuns bloons (+8 Dmg)", apply: (t) => { t.damage += 8; t.moabMultiplier = 3; } },
+            { name: "Gigantosaurus", cost: 55000, desc: "Colossal carnivore crushes blimps in massive jaws (+25 Dmg)", apply: (t) => { t.damage += 25; t.moabMultiplier = 6; } },
+            { name: "Apex Plasma", cost: 100000, desc: "Cyber-enhanced prehistoric apex predator with plasma breath (+60 Dmg)", apply: (t) => { t.damage += 60; t.fireRate *= 2.0; } }
+          ],
+          path3: [
+            { name: "Gyrfalcon", cost: 175, desc: "Scouting falcon dive-bombs camo bloons (+25 Range)", apply: (t) => { t.range += 25; t.canSeeCamo = true; } },
+            { name: "Horned Owl", cost: 890, desc: "Horned owl carries bloons backwards away from exit", apply: (t) => { t.knockback = true; t.damage += 1; } },
+            { name: "Golden Eagle", cost: 2450, desc: "Golden eagle grabs ceramics and bloons (+4 Dmg)", apply: (t) => { t.damage += 4; t.range += 35; } },
+            { name: "Pouākai", cost: 13000, desc: "Giant mythical bird carries MOAB blimps backwards (+12 Dmg)", apply: (t) => { t.damage += 12; t.moabMultiplier = 4; } },
+            { name: "Roc", cost: 60000, desc: "Legendary Roc sweeps entire bloon waves out of the sky (+30 Dmg)", apply: (t) => { t.damage += 30; t.fireRate *= 1.8; } }
+          ]
         }
       }
     };
@@ -1943,7 +2382,28 @@
       };
     }
 
-    // --- 7. Inspection & 3-Path Upgrades ---
+    // --- 7. Inspection & 3-Path Upgrades (Authentic BTD6 Crosspath Rules) ---
+    function getUpgradeLockReason(tower, pathNum) {
+      const currentTier = tower[`p${pathNum}Tier`] || 0;
+      if (currentTier >= 5) return 'MAXED';
+
+      const otherTiers = [1, 2, 3].filter(p => p !== pathNum).map(p => tower[`p${p}Tier`] || 0);
+      const activeOtherPaths = otherTiers.filter(t => t > 0).length;
+
+      // Rule 1: Max 2 paths can have upgrades (third path locked at 0)
+      if (currentTier === 0 && activeOtherPaths >= 2) {
+        return 'LOCKED (Max 2 Paths)';
+      }
+
+      // Rule 2: Only 1 path can exceed Tier 2. Second path is capped at Tier 2.
+      const otherHasTier3Plus = otherTiers.some(t => t >= 3);
+      if (currentTier >= 2 && otherHasTier3Plus) {
+        return 'LOCKED (Crosspath Max T2)';
+      }
+
+      return null;
+    }
+
     function inspectTower(t) {
       inspectedTower = t;
       const card = document.getElementById('upgrade-card');
@@ -1962,15 +2422,45 @@
 
       // Update Paths 1, 2, 3
       [1, 2, 3].forEach(p => {
-        const upgList = spec.upgrades[`path${p}`];
-        const currentTier = t[`p${p}Tier`];
-        const upg = upgList ? upgList[currentTier] : null;
+        const upgList = spec.upgrades[`path${p}`] || [];
+        const currentTier = t[`p${p}Tier`] || 0;
+        const upg = upgList[currentTier] || null;
         const nameEl = document.getElementById(`p${p}-name`);
         const costEl = document.getElementById(`p${p}-cost`);
         const descEl = document.getElementById(`p${p}-desc`);
         const btn = document.getElementById(`p${p}-btn`);
+        const pipsContainer = document.getElementById(`p${p}-pips`);
 
-        if (upg) {
+        // Update 5-tier Progress Pips
+        if (pipsContainer) {
+          const pips = pipsContainer.children;
+          for (let pi = 0; pi < 5; pi++) {
+            if (pips[pi]) {
+              pips[pi].className = 'tier-pip' + (currentTier > pi ? ' active' : '') + (pi === 4 ? ' t5' : '');
+            }
+          }
+        }
+
+        const lockReason = getUpgradeLockReason(t, p);
+
+        if (currentTier >= 5) {
+          nameEl.textContent = `Path ${p} MAXED`;
+          costEl.textContent = 'MAX';
+          descEl.textContent = 'Tier 5 Master achieved';
+          btn.textContent = 'MAXED';
+          btn.disabled = true;
+          btn.className = 'btn-buy-upgrade locked';
+        } else if (lockReason) {
+          nameEl.textContent = upg ? upg.name : `Path ${p}`;
+          costEl.textContent = 'LOCKED';
+          descEl.textContent = lockReason.includes('Max 2') ?
+            'BTD6 Rule: A tower can only upgrade 2 paths.' :
+            'BTD6 Rule: Only 1 path can exceed Tier 2.';
+          btn.textContent = lockReason;
+          btn.disabled = true;
+          btn.className = 'btn-buy-upgrade locked';
+        } else if (upg) {
+          btn.className = 'btn-buy-upgrade';
           let discountMult = 1.0;
           for (const vt of towers) {
             if (vt.isVillage && vt.discountPercent && Math.hypot(vt.x - t.x, vt.y - t.y) <= vt.range) {
@@ -1979,7 +2469,7 @@
           }
           const effCost = Math.round(upg.cost * discountMult);
 
-          nameEl.textContent = upg.name;
+          nameEl.textContent = `T${currentTier + 1}: ${upg.name}`;
           costEl.textContent = discountMult < 1.0 ? `$${effCost} (-${Math.round((1-discountMult)*100)}%)` : `$${effCost}`;
           descEl.textContent = upg.desc;
           if (!isMyTower) {
@@ -1989,12 +2479,6 @@
             btn.textContent = `Buy ($${effCost})`;
             btn.disabled = cash < effCost;
           }
-        } else {
-          nameEl.textContent = `Path ${p} MAXED`;
-          costEl.textContent = 'MAX';
-          descEl.textContent = 'Max tier achieved';
-          btn.textContent = 'MAXED';
-          btn.disabled = true;
         }
       });
 
@@ -2014,6 +2498,13 @@
       if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== mySlot) {
         showToast("Cannot upgrade teammate's tower!", true);
         return;
+      }
+      if (!fromNet) {
+        const lockReason = getUpgradeLockReason(inspectedTower, pathNum);
+        if (lockReason) {
+          showToast(lockReason, true);
+          return;
+        }
       }
       const spec = TOWER_SPECS[inspectedTower.typeKey];
       const tierKey = `p${pathNum}Tier`;
@@ -2395,11 +2886,16 @@
 
         // Update Aerial Unit Flight Paths (Ace & Heli)
         if (t.isAce) {
-          t.aceAngle = (t.aceAngle || 0) + 1.2 * dt;
-          // Figure-8 flight pattern
-          t.curX = t.x + Math.sin(t.aceAngle) * 85;
-          t.curY = t.y + Math.sin(t.aceAngle * 2) * 45;
-          t.angle = t.aceAngle;
+          t.aceAngle = (t.aceAngle || 0) + 0.85 * dt;
+          // Enlarged Figure-8 flight pattern covering map
+          const rx = 230;
+          const ry = 125;
+          t.curX = Math.max(35, Math.min(905, t.x + Math.sin(t.aceAngle) * rx));
+          t.curY = Math.max(35, Math.min(615, t.y + Math.sin(t.aceAngle * 2) * ry));
+          // True tangent heading angle along the figure-8 curve
+          const vx = Math.cos(t.aceAngle) * rx;
+          const vy = Math.cos(t.aceAngle * 2) * 2 * ry;
+          t.angle = Math.atan2(vy, vx);
         } else if (t.isHeli) {
           // Autonomous pursuit or orbit around helipad
           const speed = (t.flySpeedMultiplier || 1.0) * 160 * dt;
