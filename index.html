@@ -605,7 +605,7 @@
   <!-- Top Header Bar -->
   <div class="top-header">
     <div class="lobby-badge">
-      <span class="version-tag" title="Build Version">v1.2.0-COOP</span>
+      <span class="version-tag" title="Build Version">v1.2.1-COOP</span>
       <button class="btn-lobby-trigger" onclick="openLanModal()">
         <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
       </button>
@@ -645,7 +645,7 @@
       Captures all network events, WebRTC state, connection handshakes, and uncaught errors.
     </div>
     <div id="debug-log-view" class="debug-log-view">
-      [System] Diagnostic log initialized (v1.2.0-COOP)
+      [System] Diagnostic log initialized (v1.2.1-COOP)
     </div>
     <div style="display: flex; gap: 10px; justify-content: flex-end;">
       <button onclick="clearDebugLog()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Clear Log</button>
@@ -1261,7 +1261,7 @@
           if (cash >= spec.cost) {
             cash -= spec.cost;
             const ownerName = netMode !== 'offline' ? (myRole === 'host' ? 'P1 (Host)' : 'P2 (Partner)') : 'Player 1';
-            const newT = createTower(selectedTowerKey, clickX, clickY, ownerName);
+            const newT = createTower(selectedTowerKey, clickX, clickY, ownerName, myRole);
             towers.push(newT);
             playSfx('dart');
             createFloatingText(clickX, clickY - 20, `-$${spec.cost}`, '#facc15');
@@ -1279,6 +1279,7 @@
                   x: newT.x,
                   y: newT.y,
                   owner: newT.owner,
+                  ownerRole: newT.ownerRole,
                   totalCost: newT.totalCost
                 },
                 senderCash: cash
@@ -1355,11 +1356,12 @@
       return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
     }
 
-    function createTower(typeKey, x, y, owner = 'Player 1') {
+    function createTower(typeKey, x, y, owner = 'Player 1', ownerRole = null) {
       const s = TOWER_SPECS[typeKey];
+      const resolvedRole = ownerRole || (netMode !== 'offline' ? myRole : 'host');
       return {
         id: Math.random().toString(36).substring(2, 9),
-        typeKey, owner, name: s.name, x, y, angle: 0,
+        typeKey, owner, ownerRole: resolvedRole, name: s.name, x, y, angle: 0,
         range: s.range, fireRate: s.fireRate, projectileSpeed: s.projectileSpeed || 8,
         damage: s.damage, pierce: s.pierce || 1, splashRadius: s.splashRadius || 0,
         isExplosive: !!s.isExplosive, isAoePulse: !!s.isAoePulse, isHoming: !!s.isHoming,
@@ -1385,7 +1387,7 @@
 
       const spec = TOWER_SPECS[t.typeKey];
       const isCoop = netMode !== 'offline' && peerConnected;
-      const isMyTower = !isCoop || (t.owner === myPlayerName);
+      const isMyTower = !isCoop || (t.ownerRole === myRole);
 
       // Update Paths 1, 2, 3
       [1, 2, 3].forEach(p => {
@@ -1430,6 +1432,10 @@
 
     function buyUpgrade(pathNum, fromNet = false) {
       if (!inspectedTower) return;
+      if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== myRole) {
+        showToast("Cannot upgrade partner's tower!", true);
+        return;
+      }
       const spec = TOWER_SPECS[inspectedTower.typeKey];
       const tierKey = `p${pathNum}Tier`;
       const upgList = spec.upgrades[`path${pathNum}`];
@@ -1459,6 +1465,10 @@
 
     function sellInspectedTower(fromNet = false) {
       if (!inspectedTower) return;
+      if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== myRole) {
+        showToast("Cannot sell partner's tower!", true);
+        return;
+      }
       const tId = inspectedTower.id;
       const val = Math.floor(inspectedTower.totalCost * 0.7);
       if (!fromNet) cash += val;
@@ -1478,6 +1488,9 @@
 
     function setTargetPriority(val, fromNet = false) {
       if (inspectedTower) {
+        if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== myRole) {
+          return;
+        }
         inspectedTower.targetPriority = val;
         if (!fromNet && netMode !== 'offline' && peerConnected) {
           sendNetMessage({
@@ -2132,6 +2145,18 @@
       for (const t of towers) {
         ctx.save();
         ctx.translate(t.x, t.y);
+
+        // In Co-op, render a distinct colored base ring indicating who owns the tower (P1 Cyan vs P2 Pink)
+        if (netMode !== 'offline' && peerConnected) {
+          const isP1 = t.ownerRole === 'host' || (t.owner && (t.owner.includes('P1') || t.owner.includes('Host')));
+          ctx.save();
+          ctx.strokeStyle = isP1 ? 'rgba(56, 189, 248, 0.7)' : 'rgba(236, 72, 153, 0.7)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, 20, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
 
         if (t.typeKey === 'buccaneer') {
           // Buccaneer Wooden War Galleon Ship
@@ -3176,7 +3201,7 @@
       showToast('Debug log cleared.');
     }
     function copyDebugLog() {
-      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.1.0-COOP) ===\n`;
+      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.2.1-COOP) ===\n`;
       report += `Time: ${new Date().toISOString()}\n`;
       report += `User Agent: ${navigator.userAgent}\n`;
       report += `MQTT Library Available: ${typeof mqtt !== 'undefined'}\n`;
@@ -3311,6 +3336,7 @@
               x: t.x,
               y: t.y,
               owner: t.owner,
+              ownerRole: t.ownerRole || 'host',
               totalCost: t.totalCost,
               p1Tier: t.p1Tier,
               p2Tier: t.p2Tier,
@@ -3323,12 +3349,13 @@
           sendNetMessage({
             type: 'CLIENT_HEARTBEAT',
             clientCash: cash,
-            towers: towers.filter(t => t.owner === myPlayerName).map(t => ({
+            towers: towers.filter(t => t.ownerRole === 'client' || t.owner === myPlayerName).map(t => ({
               id: t.id,
               typeKey: t.typeKey,
               x: t.x,
               y: t.y,
               owner: t.owner,
+              ownerRole: t.ownerRole || 'client',
               totalCost: t.totalCost,
               p1Tier: t.p1Tier,
               p2Tier: t.p2Tier,
@@ -3415,6 +3442,7 @@
               isWaveActive,
               towers: towers.map(t => ({
                 id: t.id, typeKey: t.typeKey, x: t.x, y: t.y, owner: t.owner,
+                ownerRole: t.ownerRole || 'host',
                 totalCost: t.totalCost, p1Tier: t.p1Tier, p2Tier: t.p2Tier, p3Tier: t.p3Tier,
                 targetPriority: t.targetPriority
               }))
@@ -3727,6 +3755,7 @@
             isWaveActive,
             towers: towers.map(t => ({
               id: t.id, typeKey: t.typeKey, x: t.x, y: t.y, owner: t.owner,
+              ownerRole: t.ownerRole || 'host',
               totalCost: t.totalCost, p1Tier: t.p1Tier, p2Tier: t.p2Tier, p3Tier: t.p3Tier,
               targetPriority: t.targetPriority
             }))
@@ -3794,6 +3823,7 @@
                 cash, lives, currentRound, isWaveActive,
                 towers: towers.map(t => ({
                   id: t.id, typeKey: t.typeKey, x: t.x, y: t.y, owner: t.owner,
+                  ownerRole: t.ownerRole || 'host',
                   totalCost: t.totalCost, p1Tier: t.p1Tier, p2Tier: t.p2Tier, p3Tier: t.p3Tier,
                   targetPriority: t.targetPriority
                 }))
@@ -3849,7 +3879,8 @@
         case 'PLACE_TOWER':
           const tData = msg.towerData;
           if (!towers.some(t => t.id === tData.id)) {
-            const placedTower = createTower(tData.typeKey, tData.x, tData.y, tData.owner || 'Partner');
+            const partnerRole = tData.ownerRole || (myRole === 'host' ? 'client' : 'host');
+            const placedTower = createTower(tData.typeKey, tData.x, tData.y, tData.owner || 'Partner', partnerRole);
             placedTower.id = tData.id;
             placedTower.totalCost = tData.totalCost || placedTower.totalCost;
             towers.push(placedTower);
@@ -3902,7 +3933,8 @@
           // Synchronize full tower fleet
           towers = [];
           for (const st of msg.towers) {
-            const restored = createTower(st.typeKey, st.x, st.y, st.owner);
+            const role = st.ownerRole || ((st.owner && (st.owner.includes('P1') || st.owner.includes('Host'))) ? 'host' : 'client');
+            const restored = createTower(st.typeKey, st.x, st.y, st.owner, role);
             restored.id = st.id;
             restored.totalCost = st.totalCost;
             restored.targetPriority = st.targetPriority || 'first';
@@ -3933,7 +3965,8 @@
             for (const st of msg.towers) {
               let existing = towers.find(t => t.id === st.id);
               if (!existing) {
-                existing = createTower(st.typeKey, st.x, st.y, st.owner);
+                const role = st.ownerRole || ((st.owner && (st.owner.includes('P1') || st.owner.includes('Host'))) ? 'host' : 'client');
+                existing = createTower(st.typeKey, st.x, st.y, st.owner, role);
                 existing.id = st.id;
                 existing.totalCost = st.totalCost;
                 existing.targetPriority = st.targetPriority || 'first';
@@ -3951,6 +3984,7 @@
                 towers.push(existing);
                 logNet(`🔄 Auto-healed missing tower: ${existing.name} (${existing.owner})`);
               } else {
+                if (st.ownerRole && !existing.ownerRole) existing.ownerRole = st.ownerRole;
                 const spec = TOWER_SPECS[st.typeKey];
                 for (let p = 1; p <= 3; p++) {
                   while (existing[`p${p}Tier`] < (st[`p${p}Tier`] || 0)) {
@@ -3967,7 +4001,7 @@
               }
             }
             const hostIds = new Set(msg.towers.map(t => t.id));
-            towers = towers.filter(t => hostIds.has(t.id) || t.owner === myPlayerName || t.owner.includes('P2'));
+            towers = towers.filter(t => hostIds.has(t.id) || t.ownerRole === 'client' || t.owner === myPlayerName || t.owner.includes('P2'));
           }
           updateUI();
           break;
@@ -3977,7 +4011,8 @@
           if (msg.towers) {
             for (const st of msg.towers) {
               if (!towers.some(t => t.id === st.id)) {
-                const existing = createTower(st.typeKey, st.x, st.y, st.owner);
+                const role = st.ownerRole || 'client';
+                const existing = createTower(st.typeKey, st.x, st.y, st.owner, role);
                 existing.id = st.id;
                 existing.totalCost = st.totalCost;
                 existing.targetPriority = st.targetPriority || 'first';
