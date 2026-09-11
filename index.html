@@ -736,7 +736,7 @@
   <!-- Top Header Bar -->
   <div class="top-header">
     <div class="lobby-badge">
-      <span class="version-tag" title="Build Version">v1.6.0-5TIERS</span>
+      <span class="version-tag" title="Build Version">v1.7.0-OBSTACLES</span>
       <button class="btn-lobby-trigger" onclick="openLanModal()">
         <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
       </button>
@@ -1254,6 +1254,11 @@
           { type: 'tree', x: 890, y: 90,  r: 30, color1: '#166534', color2: '#22c55e' },
           { type: 'tree', x: 900, y: 560, r: 28, color1: '#166534', color2: '#22c55e' },
           { type: 'tree', x: 290, y: 460, r: 24, color1: '#166534', color2: '#22c55e' }
+        ],
+        obstacles: [
+          { name: 'Castle Ruins', x: 335, y: 240, r: 35, type: 'ruins', hitColor: '#94a3b8' },
+          { name: 'Ancient Monolith', x: 155, y: 450, r: 32, type: 'boulder', hitColor: '#64748b' },
+          { name: 'Stone Watchtower', x: 755, y: 355, r: 32, type: 'tower', hitColor: '#cbd5e1' }
         ]
       },
       desert: {
@@ -1293,6 +1298,11 @@
           { type: 'rock',   x: 520, y: 470, r: 32 },
           { type: 'rock',   x: 890, y: 140, r: 26 },
           { type: 'rock',   x: 90,  y: 560, r: 30 }
+        ],
+        obstacles: [
+          { name: 'Sandstone Pyramid', x: 315, y: 320, r: 36, type: 'pyramid', hitColor: '#fde047' },
+          { name: 'Grand Mesa', x: 535, y: 470, r: 35, type: 'mesa', hitColor: '#d97706' },
+          { name: 'Sphinx Relic', x: 745, y: 210, r: 34, type: 'sphinx', hitColor: '#f59e0b' }
         ]
       },
       glacier: {
@@ -1331,6 +1341,11 @@
           { type: 'crystal', x: 580, y: 480, r: 24 },
           { type: 'crystal', x: 850, y: 50,  r: 22 },
           { type: 'crystal', x: 420, y: 560, r: 20 }
+        ],
+        obstacles: [
+          { name: 'Glacial Monolith', x: 275, y: 315, r: 34, type: 'monolith', hitColor: '#bae6fd' },
+          { name: 'Ice Crag Citadel', x: 585, y: 450, r: 38, type: 'ice_crag', hitColor: '#38bdf8' },
+          { name: 'Crystal Spire', x: 840, y: 240, r: 34, type: 'crystal_spire', hitColor: '#e0f2fe' }
         ]
       }
     };
@@ -1373,6 +1388,7 @@
     let WAYPOINTS = MAP_PRESETS.meadow.waypoints;
     let POND = MAP_PRESETS.meadow.pond;
     let SCENERY = MAP_PRESETS.meadow.scenery;
+    let OBSTACLES = MAP_PRESETS.meadow.obstacles;
 
     let pathSegments = [];
     let totalPathLength = 0;
@@ -1411,6 +1427,7 @@
         WAYPOINTS = m.waypoints;
         POND = m.pond;
         SCENERY = m.scenery;
+        OBSTACLES = m.obstacles || [];
         rebuildPath(WAYPOINTS);
 
         if (!isWaveActive && currentRound === 1) {
@@ -2344,6 +2361,13 @@
       if (isWaterTower && !inPond) return false;
       if (!isWaterTower && inPond) return false;
 
+      // Obstacle collision (Cannot place towers on obstacles!)
+      if (OBSTACLES) {
+        for (const obs of OBSTACLES) {
+          if (Math.hypot(x - obs.x, y - obs.y) < obs.r + r) return false;
+        }
+      }
+
       // Other towers collision
       for (const t of towers) {
         if (Math.hypot(t.x - x, t.y - y) < 38) return false;
@@ -2357,6 +2381,17 @@
       let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
       t = Math.max(0, Math.min(1, t));
       return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+    }
+
+    // Line-of-sight raycaster: returns true if line between p1 and p2 is clear of obstacles
+    function checkLineOfSight(p1, p2) {
+      if (!OBSTACLES || OBSTACLES.length === 0) return true;
+      for (const obs of OBSTACLES) {
+        if (distToSegment({ x: obs.x, y: obs.y }, p1, p2) < obs.r - 2) {
+          return false;
+        }
+      }
+      return true;
     }
 
     function createTower(typeKey, x, y, owner = 'Player 1', ownerRole = null) {
@@ -2998,6 +3033,22 @@
           p.y += p.vy * dt;
         }
 
+        // Obstacle Collision (Ground projectiles hit and are blocked by obstacles!)
+        const pIgnoresObs = p.tower && (p.tower.isMortar || p.tower.isAce || p.tower.isHeli || (p.tower.isSub && p.tower.advancedIntel));
+        if (!pIgnoresObs && OBSTACLES && OBSTACLES.length > 0) {
+          let hitObstacle = false;
+          for (const obs of OBSTACLES) {
+            if (Math.hypot(p.x - obs.x, p.y - obs.y) < obs.r) {
+              spawnPopParticles(p.x, p.y, obs.hitColor || '#94a3b8');
+              playSfx('dart');
+              projectiles.splice(i, 1);
+              hitObstacle = true;
+              break;
+            }
+          }
+          if (hitObstacle) continue;
+        }
+
         // Collision Check (With generous hit detection margin)
         for (let j = bloons.length - 1; j >= 0; j--) {
           const b = bloons[j];
@@ -3119,11 +3170,14 @@
     function acquireTarget(t) {
       const originX = t.curX !== undefined ? t.curX : t.x;
       const originY = t.curY !== undefined ? t.curY : t.y;
+      const ignoresLos = t.isMortar || t.isAce || t.isHeli || (t.isSub && t.advancedIntel);
 
       const inRange = bloons.filter(b => {
         if (t.range < 5000 && Math.hypot(b.x - originX, b.y - originY) > t.range) return false;
         // Camo check (Tower natural camo, or Village camo aura)
         if (b.isCamo && !t.canSeeCamo && !t.hasVillageCamo) return false;
+        // Line-of-sight obstacle check (Ground monkeys cannot shoot through obstacles)
+        if (!ignoresLos && !checkLineOfSight({ x: originX, y: originY }, { x: b.x, y: b.y })) return false;
         return true;
       });
       if (inRange.length === 0) return null;
@@ -3507,6 +3561,158 @@
         }
       }
 
+      // 4b. Map Obstacles (Line-of-Sight & Projectile Blockers)
+      if (OBSTACLES) {
+        for (const obs of OBSTACLES) {
+          ctx.save();
+          // 1. Cast Ground Shadow
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+          ctx.beginPath();
+          ctx.ellipse(obs.x + 8, obs.y + 12, obs.r * 1.15, obs.r * 0.7, 0.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 2. Obstacle 3D Bodies
+          if (obs.type === 'ruins') {
+            const grad = ctx.createLinearGradient(obs.x - obs.r, obs.y - obs.r, obs.x + obs.r, obs.y + obs.r);
+            grad.addColorStop(0, '#94a3b8');
+            grad.addColorStop(0.6, '#475569');
+            grad.addColorStop(1, '#1e293b');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(obs.x, obs.y, obs.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Stone Brick Lines
+            ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(obs.x - 20, obs.y - 16, 40, 32);
+            ctx.beginPath();
+            ctx.moveTo(obs.x - 20, obs.y); ctx.lineTo(obs.x + 20, obs.y);
+            ctx.moveTo(obs.x, obs.y - 16); ctx.lineTo(obs.x, obs.y + 16);
+            ctx.stroke();
+
+            // Moss Accents
+            ctx.fillStyle = '#16a34a';
+            ctx.beginPath();
+            ctx.arc(obs.x - 12, obs.y + 10, 6, 0, Math.PI * 2);
+            ctx.arc(obs.x + 14, obs.y - 8, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+          } else if (obs.type === 'boulder') {
+            const grad = ctx.createRadialGradient(obs.x - 8, obs.y - 8, 4, obs.x, obs.y, obs.r);
+            grad.addColorStop(0, '#64748b');
+            grad.addColorStop(0.7, '#334155');
+            grad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.ellipse(obs.x, obs.y, obs.r, obs.r * 0.85, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+          } else if (obs.type === 'tower') {
+            ctx.fillStyle = '#475569';
+            ctx.beginPath();
+            ctx.arc(obs.x, obs.y, obs.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            // Roof cone
+            ctx.fillStyle = '#b91c1c';
+            ctx.beginPath();
+            ctx.arc(obs.x, obs.y - 4, obs.r * 0.65, 0, Math.PI * 2);
+            ctx.fill();
+
+          } else if (obs.type === 'pyramid') {
+            const pGrad = ctx.createLinearGradient(obs.x - obs.r, obs.y - obs.r, obs.x + obs.r, obs.y + obs.r);
+            pGrad.addColorStop(0, '#fde047');
+            pGrad.addColorStop(0.5, '#d97706');
+            pGrad.addColorStop(1, '#78350f');
+            ctx.fillStyle = pGrad;
+            ctx.beginPath();
+            ctx.moveTo(obs.x, obs.y - obs.r * 1.1);
+            ctx.lineTo(obs.x + obs.r * 1.1, obs.y + obs.r * 0.9);
+            ctx.lineTo(obs.x - obs.r * 1.1, obs.y + obs.r * 0.9);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+          } else if (obs.type === 'mesa') {
+            ctx.fillStyle = '#92400e';
+            ctx.beginPath();
+            ctx.arc(obs.x, obs.y + 4, obs.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#d97706';
+            ctx.beginPath();
+            ctx.arc(obs.x, obs.y - 4, obs.r * 0.9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+          } else if (obs.type === 'sphinx') {
+            ctx.fillStyle = '#b45309';
+            ctx.beginPath();
+            ctx.ellipse(obs.x, obs.y, obs.r, obs.r * 0.75, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath();
+            ctx.arc(obs.x + 8, obs.y - 4, 14, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+          } else if (obs.type === 'monolith' || obs.type === 'crystal_spire') {
+            const iceGrad = ctx.createLinearGradient(obs.x - obs.r, obs.y - obs.r, obs.x + obs.r, obs.y + obs.r);
+            iceGrad.addColorStop(0, '#f0f9ff');
+            iceGrad.addColorStop(0.5, '#7dd3fc');
+            iceGrad.addColorStop(1, '#0284c7');
+            ctx.fillStyle = iceGrad;
+            ctx.beginPath();
+            for (let sp = 0; sp < 6; sp++) {
+              const sa = (Math.PI * 2 / 6) * sp;
+              const sr = sp % 2 === 0 ? obs.r : obs.r * 0.75;
+              ctx.lineTo(obs.x + Math.cos(sa) * sr, obs.y + Math.sin(sa) * sr);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#bae6fd';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+          } else if (obs.type === 'ice_crag') {
+            const cragGrad = ctx.createRadialGradient(obs.x - 6, obs.y - 6, 2, obs.x, obs.y, obs.r);
+            cragGrad.addColorStop(0, '#ffffff');
+            cragGrad.addColorStop(0.4, '#38bdf8');
+            cragGrad.addColorStop(1, '#0369a1');
+            ctx.fillStyle = cragGrad;
+            ctx.beginPath();
+            ctx.arc(obs.x, obs.y, obs.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          }
+
+          // Top Highlight & Obstacle Shield Icon
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🛡️', obs.x, obs.y - 2);
+
+          ctx.restore();
+        }
+      }
+
       // 5. Range Preview Indicator
       if (selectedTowerKey) {
         const spec = TOWER_SPECS[selectedTowerKey];
@@ -3658,22 +3864,119 @@
           ctx.restore();
         }
 
+                // Compute Tower Upgrade Progression & Visual Mastery
+        const maxTier = Math.max(t.p1Tier || 0, t.p2Tier || 0, t.p3Tier || 0);
+        const dominantPath = (t.p1Tier >= t.p2Tier && t.p1Tier >= t.p3Tier && t.p1Tier > 0) ? 1 : ((t.p2Tier >= t.p3Tier && t.p2Tier > 0) ? 2 : (t.p3Tier > 0 ? 3 : 0));
+        const isTier5 = maxTier === 5;
+        const isTier4Plus = maxTier >= 4;
+        const isTier3Plus = maxTier >= 3;
+        const now = performance.now() * 0.003;
+
+        // Tier 5 Radiant Golden Mastery Halo / Ring
+        if (isTier5) {
+          ctx.save();
+          const auraPulse = Math.sin(now * 5) * 3;
+          ctx.strokeStyle = '#facc15';
+          ctx.lineWidth = 3;
+          ctx.shadowColor = '#eab308';
+          ctx.shadowBlur = 14;
+          ctx.setLineDash([6, 3]);
+          ctx.beginPath();
+          ctx.arc(0, 0, 24 + auraPulse, 0, Math.PI * 2);
+          ctx.stroke();
+          // Radiating 4-star sparks
+          for (let sp = 0; sp < 4; sp++) {
+            const spAng = now * 2 + (Math.PI / 2) * sp;
+            const spDist = 26 + auraPulse;
+            ctx.fillStyle = '#fef08a';
+            ctx.beginPath();
+            ctx.arc(Math.cos(spAng) * spDist, Math.sin(spAng) * spDist, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        } else if (isTier4Plus) {
+          // Tier 4 Subtle Violet/Cyan Elite Aura Ring
+          ctx.save();
+          ctx.strokeStyle = dominantPath === 1 ? 'rgba(56, 189, 248, 0.7)' : (dominantPath === 2 ? 'rgba(239, 68, 68, 0.7)' : 'rgba(168, 85, 247, 0.7)');
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(0, 0, 22, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Tier Level Overhead Stars Badge (Shows when upgraded)
+        if (maxTier >= 1) {
+          ctx.save();
+          ctx.fillStyle = isTier5 ? '#facc15' : (isTier4Plus ? '#c084fc' : '#38bdf8');
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          const starStr = isTier5 ? '★★★★★' : (isTier4Plus ? '★★★★' : '★'.repeat(maxTier));
+          ctx.fillText(starStr, 0, -22);
+          ctx.restore();
+        }
+
         if (t.typeKey === 'buccaneer') {
           // Buccaneer Wooden War Galleon Ship
-          ctx.fillStyle = '#78350f';
+          ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#451a03' : '#78350f'; // Darker merchant teak
           ctx.beginPath();
           ctx.ellipse(0, 0, 22, 12, t.angle, 0, Math.PI*2);
           ctx.fill();
-          ctx.strokeStyle = '#451a03';
+          ctx.strokeStyle = dominantPath === 3 && isTier3Plus ? '#facc15' : '#451a03'; // Gold ship trim
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          // White Cloth Sail
+          // White Cloth Sail / Flight Deck / Pirate Tricorn
           ctx.rotate(t.angle);
-          ctx.fillStyle = '#f8fafc';
-          ctx.fillRect(-3, -16, 6, 32);
-          ctx.fillStyle = '#dc2626';
-          ctx.fillText('🏴‍☠️', 0, 0);
+          if (dominantPath === 1 && isTier3Plus) {
+            // Path 1 (Carrier / Aircraft Platform) - Gray Iron Deck with mini biplane
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(-10, -14, 20, 28);
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-10, -14, 20, 28);
+            // Runway centerline
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(-1, -12, 2, 24);
+            // Mini Deck Fighter Plane
+            ctx.fillStyle = isTier5 ? '#facc15' : '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(0, 0, 4, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (dominantPath === 2 && isTier3Plus) {
+            // Path 2 (Pirate Captain / Harpoon Ship) - Crimson Sails & Heavy Harpoon cannon
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(-4, -16, 8, 32);
+            ctx.fillStyle = '#facc15';
+            ctx.fillText('🏴‍☠️', 0, 0);
+            // Heavy Bow Harpoon Cannon
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(16, -3, 9, 6);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.moveTo(25, -4); ctx.lineTo(31, 0); ctx.lineTo(25, 4);
+            ctx.closePath();
+            ctx.fill();
+          } else if (dominantPath === 3 && isTier3Plus) {
+            // Path 3 (Merchantman / Trade Empire) - Golden Silk Sails & Gilded Chests
+            ctx.fillStyle = '#fef08a';
+            ctx.fillRect(-3, -16, 6, 32);
+            ctx.fillStyle = '#ca8a04';
+            ctx.fillText('💰', 0, 0);
+            // Gold Trim Medallions
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(14, 0, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            // Standard White Cloth Sail
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(-3, -16, 6, 32);
+            ctx.fillStyle = '#dc2626';
+            ctx.fillText('🏴‍☠️', 0, 0);
+          }
         } else {
           // Soft Contact Ground Shadow (Directly under character feet)
           ctx.save();
@@ -3698,7 +4001,6 @@
           // Aim angle rotation for body/weapon
           ctx.rotate(t.angle);
 
-          const now = performance.now() * 0.003;
           const isDark = (t.typeKey === 'dart' && (t.p2Tier >= 2 || t.p3Tier >= 2)) || (t.typeKey === 'super' && t.p3Tier >= 2);
 
           if (t.typeKey === 'dart') {
@@ -3709,7 +4011,6 @@
             const furMain = isDark ? '#1e1b4b' : '#78350f';
             const furLight = isDark ? '#312e81' : '#92400e';
             const skinTone = isDark ? '#334155' : '#fed7aa';
-            const skinShadow = isDark ? '#1e293b' : '#fbcfe8';
 
             // 1. Curled Monkey Tail with clean outline
             ctx.save();
@@ -3730,10 +4031,9 @@
             ctx.stroke();
             ctx.restore();
 
-            // 2. Protruding Round Ears (Drawn behind head, sticking out on sides)
+            // 2. Protruding Round Ears
             ctx.save();
             for (const earY of [-10.5, 10.5]) {
-              // Ear outer rim
               ctx.fillStyle = furDark;
               ctx.beginPath();
               ctx.arc(-2, earY, 5.5, 0, Math.PI * 2);
@@ -3744,7 +4044,6 @@
               ctx.arc(-2, earY, 4.5, 0, Math.PI * 2);
               ctx.fill();
 
-              // Peach inner ear cup
               ctx.fillStyle = skinTone;
               ctx.beginPath();
               ctx.arc(-1.5, earY, 2.8, 0, Math.PI * 2);
@@ -3754,7 +4053,6 @@
 
             // 3. Lower Body & Planted Feet
             ctx.save();
-            // Feet / paws on ground
             ctx.fillStyle = furDark;
             ctx.beginPath();
             ctx.ellipse(-4, -10, 4.5, 3.5, 0, 0, Math.PI * 2);
@@ -3767,7 +4065,7 @@
             ctx.ellipse(-2.5, 10, 3, 2.2, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Torso (Slightly behind the head)
+            // Torso
             const torsoGrad = ctx.createRadialGradient(-3, 0, 1, -2, 0, 10);
             torsoGrad.addColorStop(0, furLight);
             torsoGrad.addColorStop(0.8, furMain);
@@ -3782,7 +4080,7 @@
             ctx.stroke();
             ctx.restore();
 
-            // 4. Head (Compact, forward, well-proportioned 3D sphere)
+            // 4. Head
             ctx.save();
             const headGrad = ctx.createRadialGradient(2, -2, 1, 1, 0, 10);
             headGrad.addColorStop(0, furLight);
@@ -3797,8 +4095,36 @@
             ctx.lineWidth = 1.4;
             ctx.stroke();
 
-            // 5. Headband / Hood Details
-            if (isDark) {
+            // 5. Headband / Headgear / Upgrades
+            if (isTier3Plus && dominantPath === 1) {
+              // Path 1 (Spike-o-pult / Juggernaut / Ultra-Juggernaut) - Heavy Iron Spiked Headband
+              ctx.fillStyle = '#475569';
+              ctx.beginPath();
+              ctx.ellipse(-1, 0, 4.5, 10.5, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#0f172a';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+              // Spikes on headband
+              ctx.fillStyle = isTier5 ? '#facc15' : '#cbd5e1';
+              for (const sy of [-8, -4, 0, 4, 8]) {
+                ctx.beginPath();
+                ctx.moveTo(-5, sy); ctx.lineTo(-9, sy); ctx.lineTo(-5, sy + 2);
+                ctx.fill();
+              }
+            } else if (isTier3Plus && dominantPath === 2) {
+              // Path 2 (Super Monkey Fan Club / PMFC) - Red Superhero Cape & Plasma Visor
+              ctx.fillStyle = '#ef4444';
+              ctx.beginPath();
+              ctx.ellipse(-1, 0, 3.8, 9.8, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // Glowing Plasma Visor
+              ctx.fillStyle = isTier5 ? '#facc15' : '#38bdf8';
+              ctx.shadowColor = isTier5 ? '#eab308' : '#0284c7';
+              ctx.shadowBlur = 6;
+              ctx.fillRect(2, -5, 4, 10);
+              ctx.shadowBlur = 0;
+            } else if (isDark) {
               // Dark Assassin Cowl / Hood
               ctx.fillStyle = '#0f172a';
               ctx.beginPath();
@@ -3809,13 +4135,13 @@
               ctx.lineTo(-6, 9);
               ctx.closePath();
               ctx.fill();
-              ctx.strokeStyle = '#6366f1';
+              ctx.strokeStyle = isTier5 ? '#facc15' : '#6366f1';
               ctx.lineWidth = 1.2;
               ctx.stroke();
 
-              // Glowing Purple Visor Eyes
-              ctx.fillStyle = '#c084fc';
-              ctx.shadowColor = '#a855f7';
+              // Glowing Crossbow Master Visor
+              ctx.fillStyle = isTier5 ? '#facc15' : '#c084fc';
+              ctx.shadowColor = isTier5 ? '#eab308' : '#a855f7';
               ctx.shadowBlur = 6;
               ctx.beginPath();
               ctx.ellipse(4.5, -3, 2.5, 1.6, 0.1, 0, Math.PI * 2);
@@ -3823,18 +4149,18 @@
               ctx.fill();
               ctx.shadowBlur = 0;
             } else {
-              // Classic Red Ninja/Athletic Headband across forehead
-              ctx.fillStyle = '#b91c1c'; // Dark red border
+              // Classic Red Headband
+              ctx.fillStyle = '#b91c1c';
               ctx.beginPath();
               ctx.ellipse(-1, 0, 3.8, 9.8, 0, 0, Math.PI * 2);
               ctx.fill();
 
-              ctx.fillStyle = '#ef4444'; // Vibrant red band
+              ctx.fillStyle = '#ef4444';
               ctx.beginPath();
               ctx.ellipse(-1, 0, 2.5, 9.5, 0, 0, Math.PI * 2);
               ctx.fill();
 
-              // Fluttering Headband Ribbon Knot & Tails (trailing backwards)
+              // Headband Ribbon Tails
               const wave1 = Math.sin(now * 3.5) * 2;
               const wave2 = Math.cos(now * 3.5) * 2;
               ctx.fillStyle = '#dc2626';
@@ -3852,7 +4178,7 @@
               ctx.quadraticCurveTo(-8, 5 + wave2, -3, 2);
               ctx.fill();
 
-              // Peach Muzzle / Snout (Positioned on the front face of monkey)
+              // Peach Muzzle
               ctx.fillStyle = skinTone;
               ctx.beginPath();
               ctx.ellipse(5, 0, 4.8, 4.2, 0, 0, Math.PI * 2);
@@ -3861,7 +4187,7 @@
               ctx.lineWidth = 0.8;
               ctx.stroke();
 
-              // Smiling mouth & cute nose
+              // Nose & mouth
               ctx.fillStyle = '#78350f';
               ctx.beginPath();
               ctx.arc(7.2, 0, 1.2, 0, Math.PI * 2);
@@ -3873,14 +4199,13 @@
               ctx.arc(6.2, 0, 1.6, 0, Math.PI);
               ctx.stroke();
 
-              // Expressive Cartoon Eyes
+              // Cartoon Eyes
               ctx.fillStyle = '#0f172a';
               ctx.beginPath();
               ctx.arc(3.8, -2.8, 2.1, 0, Math.PI * 2);
               ctx.arc(3.8, 2.8, 2.1, 0, Math.PI * 2);
               ctx.fill();
 
-              // Bright Specular Eye Glint
               ctx.fillStyle = '#ffffff';
               ctx.beginPath();
               ctx.arc(4.4, -3.3, 0.8, 0, Math.PI * 2);
@@ -3889,9 +4214,8 @@
             }
             ctx.restore();
 
-            // 6. Arms & Weapons (Aiming forward in throw pose)
+            // 6. Arms & Weapons
             ctx.save();
-            // Left Support Arm
             ctx.fillStyle = furDark;
             ctx.beginPath();
             ctx.ellipse(0, -6.5, 4, 2.8, -0.4, 0, Math.PI * 2);
@@ -3901,20 +4225,37 @@
             ctx.arc(2.5, -8, 2.2, 0, Math.PI * 2);
             ctx.fill();
 
-            if (isDark) {
-              // Tactical Crossbow
+            if (isTier3Plus && dominantPath === 1) {
+              // Path 1 (Juggernaut Spiked Ball in sling/hand)
               ctx.fillStyle = '#334155';
+              ctx.beginPath();
+              ctx.arc(14, 4, isTier5 ? 9 : 7, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#0f172a';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+              // Spikes protruding from ball
+              ctx.fillStyle = isTier5 ? '#facc15' : '#94a3b8';
+              for (let sp = 0; sp < 6; sp++) {
+                const spa = (Math.PI * 2 / 6) * sp + now * 2;
+                ctx.beginPath();
+                ctx.arc(14 + Math.cos(spa) * (isTier5 ? 10 : 8), 4 + Math.sin(spa) * (isTier5 ? 10 : 8), 2.2, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            } else if (isDark || (isTier3Plus && dominantPath === 3)) {
+              // Tactical Crossbow / Crossbow Master
+              ctx.fillStyle = isTier5 ? '#0f172a' : '#334155';
               ctx.fillRect(5, 2, 13, 3.5);
-              ctx.strokeStyle = '#64748b';
+              ctx.strokeStyle = isTier5 ? '#facc15' : '#64748b';
               ctx.lineWidth = 2;
               ctx.beginPath();
               ctx.moveTo(11, -7); ctx.lineTo(15, 3.5); ctx.lineTo(11, 14);
               ctx.stroke();
 
               // Glowing Crossbow Bolt
-              ctx.fillStyle = '#c084fc';
+              ctx.fillStyle = isTier5 ? '#facc15' : '#c084fc';
               ctx.fillRect(8, 3, 14, 2);
-              ctx.fillStyle = '#a855f7';
+              ctx.fillStyle = isTier5 ? '#eab308' : '#a855f7';
               ctx.beginPath();
               ctx.moveTo(22, 2); ctx.lineTo(26, 4); ctx.lineTo(22, 6);
               ctx.fill();
@@ -3925,23 +4266,20 @@
               ctx.ellipse(3, 5, 4.5, 2.6, 0.3, 0, Math.PI * 2);
               ctx.fill();
 
-              // Hand clasping dart
               ctx.fillStyle = skinTone;
               ctx.beginPath();
               ctx.arc(7.5, 5.5, 2.5, 0, Math.PI * 2);
               ctx.fill();
 
-              // High-Definition Wooden Dart
-              // Wooden Shaft
+              // Wooden / Golden Dart
               const dartGrad = ctx.createLinearGradient(4, 0, 18, 0);
               dartGrad.addColorStop(0, '#78350f');
-              dartGrad.addColorStop(0.5, '#b45309');
+              dartGrad.addColorStop(0.5, isTier5 ? '#facc15' : '#b45309');
               dartGrad.addColorStop(1, '#451a03');
               ctx.fillStyle = dartGrad;
               ctx.fillRect(4, 4.2, 15, 2.6);
 
-              // Tri-feather Red Fletching at back
-              ctx.fillStyle = '#dc2626';
+              ctx.fillStyle = isTier5 ? '#facc15' : '#dc2626';
               ctx.beginPath();
               ctx.moveTo(4, 1.5);
               ctx.lineTo(9, 5.5);
@@ -3949,10 +4287,9 @@
               ctx.closePath();
               ctx.fill();
 
-              // Sharp Metallic Silver Arrowhead
               const tipGrad = ctx.createLinearGradient(19, 0, 27, 0);
               tipGrad.addColorStop(0, '#94a3b8');
-              tipGrad.addColorStop(0.4, '#f8fafc');
+              tipGrad.addColorStop(0.4, isTier5 ? '#fef08a' : '#f8fafc');
               tipGrad.addColorStop(1, '#475569');
               ctx.fillStyle = tipGrad;
               ctx.beginPath();
@@ -3968,59 +4305,103 @@
             // ==========================================
             // STANDALONE 3D CANNON TURRET
             // ==========================================
-            // Turret Base Mount
-            ctx.fillStyle = '#1e293b';
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#0f172a' : '#1e293b';
             ctx.beginPath();
-            ctx.arc(0, 0, 15, 0, Math.PI * 2);
+            ctx.arc(0, 0, isTier3Plus ? 17 : 15, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#475569';
+            ctx.strokeStyle = isTier5 ? '#facc15' : '#475569';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Heavy Steel Cannon Barrel
-            const cannonGrad = ctx.createLinearGradient(0, -8, 0, 8);
-            cannonGrad.addColorStop(0, '#64748b');
-            cannonGrad.addColorStop(0.5, '#334155');
-            cannonGrad.addColorStop(1, '#0f172a');
-            ctx.fillStyle = cannonGrad;
-            ctx.fillRect(0, -7, 24, 14);
+            // Heavy Steel Cannon Barrel / Shark Missile / Salvo Cluster
+            if (dominantPath === 2 && isTier3Plus) {
+              // Path 2 (MOAB Assassin / Eliminator) - Sleek shark-fin missile launcher
+              ctx.fillStyle = isTier5 ? '#0f172a' : '#334155';
+              ctx.fillRect(0, -9, 28, 18);
+              // Shark mouth teeth decal
+              ctx.fillStyle = '#dc2626';
+              ctx.fillRect(16, -6, 10, 12);
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.moveTo(18, -6); ctx.lineTo(21, 0); ctx.lineTo(24, -6);
+              ctx.moveTo(18, 6); ctx.lineTo(21, 0); ctx.lineTo(24, 6);
+              ctx.fill();
+            } else if (dominantPath === 3 && isTier3Plus) {
+              // Path 3 (Cluster Bomb / Recursive / Bomb Blitz) - Triple/Salvo rocket rack
+              ctx.fillStyle = '#1e293b';
+              ctx.fillRect(0, -11, 20, 22);
+              ctx.fillStyle = '#dc2626';
+              ctx.fillRect(14, -9, 8, 5);
+              ctx.fillRect(14, -2, 8, 5);
+              ctx.fillRect(14, 5, 8, 5);
+            } else {
+              // Path 1 (Really Big Bombs / Bloon Impact / Crush) - Reinforced Massive Cannon Bore
+              const bLen = dominantPath === 1 && isTier3Plus ? 28 : 24;
+              const bWid = dominantPath === 1 && isTier3Plus ? 18 : 14;
+              const cannonGrad = ctx.createLinearGradient(0, -bWid/2, 0, bWid/2);
+              cannonGrad.addColorStop(0, '#64748b');
+              cannonGrad.addColorStop(0.5, '#334155');
+              cannonGrad.addColorStop(1, '#0f172a');
+              ctx.fillStyle = cannonGrad;
+              ctx.fillRect(0, -bWid/2, bLen, bWid);
 
-            // Muzzle Reinforcing Collar
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(22, -8.5, 4, 17);
+              ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#facc15' : '#1e293b';
+              ctx.fillRect(bLen - 2, -bWid/2 - 1.5, 4, bWid + 3);
 
-            // Deep Muzzle Bore
-            ctx.fillStyle = '#020617';
-            ctx.beginPath();
-            ctx.ellipse(26, 0, 2, 7, 0, 0, Math.PI * 2);
-            ctx.fill();
+              ctx.fillStyle = '#020617';
+              ctx.beginPath();
+              ctx.ellipse(bLen + 2, 0, 2, bWid/2, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
 
           } else if (t.typeKey === 'tack') {
             // ==========================================
             // STANDALONE POLISHED TACK DOME
             // ==========================================
             const domeGrad = ctx.createRadialGradient(-3, -3, 2, 0, 0, 16);
-            domeGrad.addColorStop(0, '#fde047');
-            domeGrad.addColorStop(0.7, '#ea580c');
-            domeGrad.addColorStop(1, '#7c2d12');
+            if (dominantPath === 1 && isTier3Plus) {
+              // Path 1 (Ring of Fire / Inferno Ring) - Volcanic Magma Dome
+              domeGrad.addColorStop(0, '#fef08a');
+              domeGrad.addColorStop(0.5, '#f97316');
+              domeGrad.addColorStop(1, '#7f1d1d');
+            } else if (dominantPath === 2 && isTier3Plus) {
+              // Path 2 (Blade Shooter / Maelstrom) - Steel Sawblade Trim
+              domeGrad.addColorStop(0, '#f8fafc');
+              domeGrad.addColorStop(0.5, '#94a3b8');
+              domeGrad.addColorStop(1, '#334155');
+            } else {
+              // Path 3 / Base - Amber Tack Dome
+              domeGrad.addColorStop(0, isTier5 ? '#fef08a' : '#fde047');
+              domeGrad.addColorStop(0.7, '#ea580c');
+              domeGrad.addColorStop(1, '#7c2d12');
+            }
             ctx.fillStyle = domeGrad;
             ctx.beginPath();
             ctx.arc(0, 0, 16, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#431407';
+            ctx.strokeStyle = isTier5 ? '#facc15' : '#431407';
             ctx.lineWidth = 2.5;
             ctx.stroke();
 
-            // 8 Steel Nozzles
-            for (let i = 0; i < 8; i++) {
-              const a = (Math.PI * 2 / 8) * i;
-              ctx.fillStyle = '#94a3b8';
-              ctx.fillRect(Math.cos(a)*13 - 2.5, Math.sin(a)*13 - 2.5, 5, 5);
+            // Nozzles / Sawblades / Fire Orbs
+            const nozzleCount = dominantPath === 3 && isTier3Plus ? 16 : 8;
+            for (let i = 0; i < nozzleCount; i++) {
+              const a = (Math.PI * 2 / nozzleCount) * i;
+              if (dominantPath === 2 && isTier3Plus) {
+                // Spinning Saw Blades
+                ctx.fillStyle = '#cbd5e1';
+                ctx.beginPath();
+                ctx.arc(Math.cos(a)*15, Math.sin(a)*15, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+              } else {
+                ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#ef4444' : '#94a3b8';
+                ctx.fillRect(Math.cos(a)*13 - 2.5, Math.sin(a)*13 - 2.5, 5, 5);
+              }
             }
-            // Warning Beacon Center
-            ctx.fillStyle = '#ef4444';
+            // Center Core
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#f59e0b' : '#ef4444';
             ctx.beginPath();
-            ctx.arc(0, 0, 4, 0, Math.PI * 2);
+            ctx.arc(0, 0, dominantPath === 1 && isTier3Plus ? 6 : 4, 0, Math.PI * 2);
             ctx.fill();
 
           } else if (t.typeKey === 'ice') {
@@ -4028,33 +4409,52 @@
             // STANDALONE FROST YETI MONKEY
             // ==========================================
             const iceGrad = ctx.createRadialGradient(-3, -3, 2, 0, 0, 16);
-            iceGrad.addColorStop(0, '#f0f9ff');
-            iceGrad.addColorStop(0.5, '#38bdf8');
-            iceGrad.addColorStop(1, '#0284c7');
+            if (dominantPath === 3 && isTier3Plus) {
+              // Path 3 (Cryo Cannon / Icicle Impale) - Cryo Armored Shell
+              iceGrad.addColorStop(0, '#e0f2fe');
+              iceGrad.addColorStop(0.5, '#0284c7');
+              iceGrad.addColorStop(1, '#082f49');
+            } else {
+              iceGrad.addColorStop(0, isTier5 ? '#fef08a' : '#f0f9ff');
+              iceGrad.addColorStop(0.5, '#38bdf8');
+              iceGrad.addColorStop(1, '#0284c7');
+            }
             ctx.fillStyle = iceGrad;
             ctx.beginPath();
-            for (let i = 0; i < 6; i++) {
-              const a = (Math.PI * 2 / 6) * i;
-              const r = i % 2 === 0 ? 16 : 11;
+            const icePoints = dominantPath === 1 && isTier3Plus ? 8 : 6;
+            for (let i = 0; i < icePoints; i++) {
+              const a = (Math.PI * 2 / icePoints) * i;
+              const r = i % 2 === 0 ? (isTier3Plus ? 18 : 16) : 11;
               ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
             }
             ctx.closePath();
             ctx.fill();
-            ctx.strokeStyle = '#e0f2fe';
+            ctx.strokeStyle = isTier5 ? '#facc15' : '#e0f2fe';
             ctx.lineWidth = 2;
             ctx.stroke();
-            // Glowing Ice Eyes
-            ctx.fillStyle = '#ffffff';
+
+            // Glowing Frost Eyes
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#38bdf8' : '#ffffff';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = isTier3Plus ? 8 : 4;
             ctx.beginPath();
             ctx.arc(4, -3, 2, 0, Math.PI * 2);
             ctx.arc(4, 3, 2, 0, Math.PI * 2);
             ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Path 3 Cryo Cannon Arm
+            if (dominantPath === 3 && isTier3Plus) {
+              ctx.fillStyle = '#0369a1';
+              ctx.fillRect(8, -4, 12, 8);
+              ctx.fillStyle = '#38bdf8';
+              ctx.fillRect(16, -5, 5, 10);
+            }
 
           } else if (t.typeKey === 'ninja') {
             // ==========================================
             // STANDALONE NINJA SHINOBI MONKEY
             // ==========================================
-            // Curled Tail
             ctx.save();
             ctx.strokeStyle = '#0f172a';
             ctx.lineWidth = 4;
@@ -4064,7 +4464,6 @@
             ctx.bezierCurveTo(-14, -4, -20, 2, -17, -12);
             ctx.stroke();
 
-            // Shinobi Cowl Ears
             for (const earY of [-10, 10]) {
               ctx.fillStyle = '#0f172a';
               ctx.beginPath();
@@ -4072,17 +4471,17 @@
               ctx.fill();
             }
 
-            // Torso (Dark Shinobi Gi)
-            ctx.fillStyle = '#1e1b4b';
+            // Torso (Dark Shinobi Gi / Grandmaster Gold Plating)
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#18181b' : '#1e1b4b';
             ctx.beginPath();
             ctx.ellipse(-3, 0, 8.5, 7.5, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#0f172a';
+            ctx.strokeStyle = dominantPath === 1 && isTier3Plus ? '#facc15' : '#0f172a';
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Crimson Sash
-            ctx.fillStyle = '#dc2626';
+            // Sash
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#9333ea' : '#dc2626'; // Purple Saboteur / Red Shinobi
             ctx.fillRect(-5, -6, 3.5, 12);
 
             // Ninja Cowl Head
@@ -4090,16 +4489,16 @@
             ctx.beginPath();
             ctx.arc(1, 0, 9.5, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#312e81';
+            ctx.strokeStyle = isTier5 ? '#facc15' : '#312e81';
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            // Crimson Forehead Plate
-            ctx.fillStyle = '#ef4444';
+            // Forehead Plate
+            ctx.fillStyle = isTier5 ? '#facc15' : (dominantPath === 3 && isTier3Plus ? '#0284c7' : '#ef4444');
             ctx.fillRect(0, -6, 2.5, 12);
 
-            // Piercing Glowing Shinobi Eyes
-            ctx.fillStyle = '#ffffff';
+            // Piercing Eyes
+            ctx.fillStyle = isTier5 ? '#fef08a' : '#ffffff';
             ctx.shadowColor = '#38bdf8';
             ctx.shadowBlur = 4;
             ctx.beginPath();
@@ -4108,29 +4507,41 @@
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Throwing Hand & Shuriken
+            // Weapon (Shuriken / Sticky Bomb Satchel / Dual Katana)
             ctx.fillStyle = '#334155';
             ctx.beginPath();
             ctx.arc(7, 5, 2.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // 4-Point Steel Shuriken
-            ctx.save();
-            ctx.translate(13, 5);
-            ctx.rotate(now * 8);
-            ctx.fillStyle = '#cbd5e1';
-            ctx.beginPath();
-            ctx.moveTo(0, -6); ctx.lineTo(1.8, -1.8);
-            ctx.lineTo(6, 0); ctx.lineTo(1.8, 1.8);
-            ctx.lineTo(0, 6); ctx.lineTo(-1.8, 1.8);
-            ctx.lineTo(-6, 0); ctx.lineTo(-1.8, -1.8);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = '#475569';
-            ctx.beginPath();
-            ctx.arc(0, 0, 1.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            if (dominantPath === 3 && isTier3Plus) {
+              // Path 3 (Sticky Bomb) - Timed bomb charge in hand
+              ctx.fillStyle = '#1e293b';
+              ctx.beginPath();
+              ctx.arc(13, 5, 5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#ef4444';
+              ctx.beginPath();
+              ctx.arc(13, 5, 2, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              // 4/8-Point Steel / Golden Shuriken
+              ctx.save();
+              ctx.translate(13, 5);
+              ctx.rotate(now * (isTier3Plus ? 12 : 8));
+              ctx.fillStyle = isTier5 ? '#facc15' : '#cbd5e1';
+              ctx.beginPath();
+              ctx.moveTo(0, -6); ctx.lineTo(1.8, -1.8);
+              ctx.lineTo(6, 0); ctx.lineTo(1.8, 1.8);
+              ctx.lineTo(0, 6); ctx.lineTo(-1.8, 1.8);
+              ctx.lineTo(-6, 0); ctx.lineTo(-1.8, -1.8);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#475569';
+              ctx.beginPath();
+              ctx.arc(0, 0, 1.5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
             ctx.restore();
 
           } else if (t.typeKey === 'super') {
@@ -4138,9 +4549,15 @@
             // STANDALONE SUPER MONKEY WITH RED CAPE
             // ==========================================
             ctx.save();
-            // Flowing Red Superhero Cape
             const capeFlutter = Math.sin(now * 6) * 4;
-            ctx.fillStyle = '#b91c1c';
+            // Cape Color: Path 1 Golden Sun Avatar, Path 2 Robo Tech, Path 3 Dark Knight / Batman
+            if (dominantPath === 1 && isTier3Plus) {
+              ctx.fillStyle = isTier5 ? '#f59e0b' : '#fbbf24'; // Sun Avatar Golden Cape
+            } else if (dominantPath === 3 && isTier3Plus) {
+              ctx.fillStyle = '#020617'; // Dark Knight Obsidian Cape
+            } else {
+              ctx.fillStyle = '#b91c1c'; // Classic Red Cape
+            }
             ctx.beginPath();
             ctx.moveTo(-5, -6);
             ctx.lineTo(-24, -14 + capeFlutter);
@@ -4152,49 +4569,79 @@
 
             // Ears
             for (const earY of [-10.5, 10.5]) {
-              ctx.fillStyle = '#451a03';
+              ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#ca8a04' : '#451a03';
               ctx.beginPath();
               ctx.arc(-2, earY, 5, 0, Math.PI * 2);
               ctx.fill();
-              ctx.fillStyle = '#fed7aa';
+              ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#fef08a' : '#fed7aa';
               ctx.beginPath();
               ctx.arc(-1.5, earY, 2.8, 0, Math.PI * 2);
               ctx.fill();
             }
 
-            // Heroic Blue Suit Torso
+            // Torso
             const superTorso = ctx.createRadialGradient(-3, 0, 1, -2, 0, 10);
-            superTorso.addColorStop(0, '#3b82f6');
-            superTorso.addColorStop(1, '#1d4ed8');
+            if (dominantPath === 1 && isTier3Plus) {
+              superTorso.addColorStop(0, '#fef08a');
+              superTorso.addColorStop(1, '#eab308');
+            } else if (dominantPath === 2 && isTier3Plus) {
+              superTorso.addColorStop(0, '#94a3b8');
+              superTorso.addColorStop(1, '#334155'); // Robo-Monkey Titanium Torso
+            } else if (dominantPath === 3 && isTier3Plus) {
+              superTorso.addColorStop(0, '#1e1b4b');
+              superTorso.addColorStop(1, '#09090b'); // Dark Knight Obsidian
+            } else {
+              superTorso.addColorStop(0, '#3b82f6');
+              superTorso.addColorStop(1, '#1d4ed8');
+            }
             ctx.fillStyle = superTorso;
             ctx.beginPath();
             ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#1e3a8a';
+            ctx.strokeStyle = isTier5 ? '#facc15' : '#1e3a8a';
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Head (Fur with Mask/Hair)
+            // Head
             const sHead = ctx.createRadialGradient(2, -2, 1, 1, 0, 10);
-            sHead.addColorStop(0, '#92400e');
-            sHead.addColorStop(1, '#78350f');
+            if (dominantPath === 1 && isTier3Plus) {
+              sHead.addColorStop(0, '#fef08a');
+              sHead.addColorStop(1, '#ca8a04');
+            } else if (dominantPath === 3 && isTier3Plus) {
+              sHead.addColorStop(0, '#1e293b');
+              sHead.addColorStop(1, '#09090b');
+            } else {
+              sHead.addColorStop(0, '#92400e');
+              sHead.addColorStop(1, '#78350f');
+            }
             ctx.fillStyle = sHead;
             ctx.beginPath();
             ctx.arc(1, 0, 9.5, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#451a03';
+            ctx.strokeStyle = isTier5 ? '#facc15' : '#451a03';
             ctx.lineWidth = 1.4;
             ctx.stroke();
 
-            // Peach Face
-            ctx.fillStyle = '#fed7aa';
+            // Sun Avatar Corona / Sun God Ray
+            if (dominantPath === 1 && isTier3Plus) {
+              ctx.fillStyle = '#facc15';
+              for (let ray = 0; ray < 8; ray++) {
+                const ra = (Math.PI * 2 / 8) * ray + now * 2;
+                ctx.beginPath();
+                ctx.arc(Math.cos(ra) * 14, Math.sin(ra) * 14, 2, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+
+            // Face & Eyes
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#fef08a' : '#fed7aa';
             ctx.beginPath();
             ctx.ellipse(5, 0, 4.5, 4, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Glowing Heroic Gold Eyes
-            ctx.fillStyle = '#facc15';
-            ctx.shadowColor = '#eab308';
+            // Glowing Eyes (Red Optic for Robo, Purple for Dark Knight, Golden for Sun)
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#ef4444' : (dominantPath === 3 && isTier3Plus ? '#c084fc' : '#facc15');
+            ctx.shadowColor = ctx.fillStyle;
             ctx.shadowBlur = 8;
             ctx.beginPath();
             ctx.arc(4, -2.8, 2.2, 0, Math.PI * 2);
@@ -4203,21 +4650,21 @@
             ctx.shadowBlur = 0;
 
             // Power Fist Forward
-            ctx.fillStyle = '#2563eb';
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#ca8a04' : '#2563eb';
             ctx.beginPath();
             ctx.ellipse(6, 6, 4.5, 3, 0.2, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#fed7aa';
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#fef08a' : '#fed7aa';
             ctx.beginPath();
             ctx.arc(10, 6.5, 3, 0, Math.PI * 2);
             ctx.fill();
 
-            // Plasma Energy Sparks in Hand
-            ctx.fillStyle = '#67e8f9';
-            ctx.shadowColor = '#38bdf8';
+            // Plasma Energy Sparks
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#c084fc' : (dominantPath === 1 && isTier3Plus ? '#fde047' : '#67e8f9');
+            ctx.shadowColor = ctx.fillStyle;
             ctx.shadowBlur = 6;
             ctx.beginPath();
-            ctx.arc(12, 6.5, 2, 0, Math.PI * 2);
+            ctx.arc(12, 6.5, 2.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
             ctx.restore();
@@ -4227,7 +4674,6 @@
             // STANDALONE BOOMERANG RANGER MONKEY
             // ==========================================
             ctx.save();
-            // 1. Curled Tail
             ctx.strokeStyle = '#451a03';
             ctx.lineWidth = 4.5;
             ctx.lineCap = 'round';
@@ -4236,7 +4682,6 @@
             ctx.bezierCurveTo(-14, -5, -21, 1, -18, -13);
             ctx.stroke();
 
-            // 2. Ears
             for (const earY of [-10.5, 10.5]) {
               ctx.fillStyle = '#451a03';
               ctx.beginPath();
@@ -4248,8 +4693,8 @@
               ctx.fill();
             }
 
-            // 3. Torso
-            ctx.fillStyle = '#78350f';
+            // Torso (Cyborg plate for Bionic, Fur otherwise)
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#475569' : '#78350f';
             ctx.beginPath();
             ctx.ellipse(-3, 0, 8.5, 7.5, 0, 0, Math.PI * 2);
             ctx.fill();
@@ -4257,117 +4702,105 @@
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // 4. Head with Ranger Cap
+            // Head with Ranger Cap / Aussie Kylie Hat
             ctx.fillStyle = '#854d0e';
             ctx.beginPath();
             ctx.arc(1, 0, 9.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Khaki Ranger Hat with Brim
-            ctx.fillStyle = '#a16207';
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#78350f' : '#a16207';
             ctx.beginPath();
             ctx.ellipse(-1, 0, 8, 11, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#713f12';
-            ctx.beginPath();
-            ctx.ellipse(-1, 0, 5, 8, 0, 0, Math.PI * 2);
-            ctx.fill();
 
-            // Peach Muzzle
-            ctx.fillStyle = '#fed7aa';
-            ctx.beginPath();
-            ctx.ellipse(5, 0, 4.5, 4, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Focused Eyes
-            ctx.fillStyle = '#0f172a';
+            // Bionic Red Eye (Path 2) or Focused Eyes
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#ef4444' : '#0f172a';
             ctx.beginPath();
             ctx.arc(4, -2.5, 2, 0, Math.PI * 2);
             ctx.arc(4, 2.5, 2, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(4.5, -2.8, 0.7, 0, Math.PI * 2);
-            ctx.arc(4.5, 2.2, 0.7, 0, Math.PI * 2);
-            ctx.fill();
 
-            // 5. Golden Curved Boomerang in Hand
-            ctx.save();
-            ctx.translate(11, 5);
-            ctx.rotate(0.35);
-            ctx.fillStyle = '#f59e0b';
-            ctx.beginPath();
-            ctx.moveTo(-3, -11);
-            ctx.quadraticCurveTo(7, 0, -3, 11);
-            ctx.lineTo(-1, 12);
-            ctx.quadraticCurveTo(10, 0, -1, -12);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = '#b45309';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            ctx.restore();
+            // Curved Boomerang in Hand / Glaives (Path 1)
+            if (dominantPath === 1 && isTier3Plus) {
+              // Spinning Orbital Glaive Ring
+              for (let g = 0; g < (isTier5 ? 4 : 2); g++) {
+                const ga = now * 10 + (Math.PI * 2 / (isTier5 ? 4 : 2)) * g;
+                ctx.save();
+                ctx.translate(Math.cos(ga) * 16, Math.sin(ga) * 16);
+                ctx.rotate(now * 15);
+                ctx.fillStyle = isTier5 ? '#facc15' : '#38bdf8';
+                ctx.fillRect(-2, -6, 4, 12);
+                ctx.fillRect(-6, -2, 12, 4);
+                ctx.restore();
+              }
+            } else {
+              ctx.save();
+              ctx.translate(11, 5);
+              ctx.rotate(0.35);
+              ctx.fillStyle = isTier5 ? '#facc15' : (dominantPath === 3 && isTier3Plus ? '#ea580c' : '#f59e0b');
+              ctx.beginPath();
+              ctx.moveTo(-3, -11);
+              ctx.quadraticCurveTo(7, 0, -3, 11);
+              ctx.lineTo(-1, 12);
+              ctx.quadraticCurveTo(10, 0, -1, -12);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = '#b45309';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+              ctx.restore();
+            }
             ctx.restore();
 
           } else if (t.typeKey === 'sniper') {
             // ==========================================
             // STANDALONE CAMO SNIPER MONKEY
             // ==========================================
-            // Prone / Kneeling Camo Body
-            ctx.fillStyle = '#14532d'; // Dark Olive Camo Fatigues
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#1e293b' : '#14532d';
             ctx.beginPath();
             ctx.ellipse(-2, 0, 13, 10, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Military Green Beret / Ghillie Cap
-            ctx.fillStyle = '#166534';
+            // Headgear: Ghillie (Path 1), NVG Goggles (Path 2), Red Beret (Path 3)
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#dc2626' : (dominantPath === 1 && isTier3Plus ? '#3f6212' : '#166534');
             ctx.beginPath();
             ctx.arc(-2, 0, 11, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#eab308'; // Gold Military Badge
-            ctx.beginPath();
-            ctx.arc(-2, -8, 2.5, 0, Math.PI * 2);
-            ctx.fill();
 
-            // Intense Aiming Eyes Looking through scope
-            ctx.fillStyle = '#0f172a';
-            ctx.beginPath();
-            ctx.arc(5, -2, 2.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(5.6, -2.6, 0.8, 0, Math.PI * 2);
-            ctx.fill();
+            // NVG Goggles Glow (Path 2)
+            if (dominantPath === 2 && isTier3Plus) {
+              ctx.fillStyle = '#22c55e';
+              ctx.shadowColor = '#4ade80';
+              ctx.shadowBlur = 6;
+              ctx.fillRect(2, -4, 4, 8);
+              ctx.shadowBlur = 0;
+            } else {
+              ctx.fillStyle = '#0f172a';
+              ctx.beginPath();
+              ctx.arc(5, -2, 2.2, 0, Math.PI * 2);
+              ctx.fill();
+            }
 
-            // Long Heavy Precision Sniper Rifle
-            // Stock & Receiver
+            // Sniper Rifle
             ctx.fillStyle = '#1e293b';
             ctx.fillRect(2, -1, 14, 4);
-            // Long Steel Barrel
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(16, 0, 22, 2.5);
-            // Muzzle Brake
+            const rLen = dominantPath === 1 && isTier3Plus ? 28 : 22;
+            ctx.fillStyle = isTier5 ? '#facc15' : '#475569';
+            ctx.fillRect(16, 0, rLen, 2.5);
+
             ctx.fillStyle = '#0f172a';
-            ctx.fillRect(36, -1, 4, 4.5);
-            // Telescopic Scope
+            ctx.fillRect(16 + rLen, -1, 4, 4.5);
             ctx.fillStyle = '#334155';
             ctx.fillRect(8, -4, 12, 3);
-            ctx.fillStyle = '#38bdf8'; // Lens Reflection
+            ctx.fillStyle = '#38bdf8';
             ctx.fillRect(18, -3.5, 1.5, 2);
-            // Bipod Legs
-            ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(30, 2); ctx.lineTo(34, 8);
-            ctx.moveTo(30, -1); ctx.lineTo(34, -7);
-            ctx.stroke();
 
-            // Tactical Laser Sight Line pointing to target
-            ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+            // Tactical Laser Sight
+            ctx.strokeStyle = isTier5 ? 'rgba(250, 204, 21, 0.7)' : 'rgba(239, 68, 68, 0.5)';
             ctx.lineWidth = 1;
             ctx.setLineDash([3, 3]);
             ctx.beginPath();
-            ctx.moveTo(38, 1); ctx.lineTo(80, 1);
+            ctx.moveTo(20 + rLen, 1); ctx.lineTo(80, 1);
             ctx.stroke();
             ctx.setLineDash([]);
 
@@ -4375,41 +4808,44 @@
             // ==========================================
             // STANDALONE ARCANE WIZARD MONKEY
             // ==========================================
-            // Flowing Star-Patterned Wizard Robes
-            ctx.fillStyle = '#4c1d95'; // Deep Violet Robe
+            // Flowing Star Robes: Galaxy Archmage (Path 1), Phoenix Fire (Path 2), Necromancer Skull (Path 3)
+            if (dominantPath === 1 && isTier3Plus) {
+              ctx.fillStyle = isTier5 ? '#1e1b4b' : '#312e81'; // Archmage Cosmic Blue
+            } else if (dominantPath === 2 && isTier3Plus) {
+              ctx.fillStyle = '#b91c1c'; // Phoenix Fire Red
+            } else if (dominantPath === 3 && isTier3Plus) {
+              ctx.fillStyle = '#09090b'; // Necromancer Obsidian
+            } else {
+              ctx.fillStyle = '#4c1d95'; // Deep Violet Robe
+            }
             ctx.beginPath();
             ctx.ellipse(-2, 0, 13, 11, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#a855f7';
+            ctx.strokeStyle = isTier5 ? '#facc15' : '#a855f7';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Gold Astrological Star Emblems on robe
-            ctx.fillStyle = '#facc15';
+            // Robe Emblems
+            ctx.fillStyle = isTier5 ? '#facc15' : '#fef08a';
             ctx.font = 'bold 8px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('✦', -6, -4);
-            ctx.fillText('✦', -6, 6);
+            ctx.fillText(dominantPath === 3 && isTier3Plus ? '☠' : (dominantPath === 2 && isTier3Plus ? '🔥' : '✦'), -6, -4);
+            ctx.fillText(dominantPath === 3 && isTier3Plus ? '☠' : (dominantPath === 2 && isTier3Plus ? '🔥' : '✦'), -6, 6);
 
-            // Tall Pointed Wizard Hat with Wide Brim
-            ctx.fillStyle = '#3b0764';
+            // Tall Wizard Hat / Phoenix Crown / Necro Cowl
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#ea580c' : (dominantPath === 3 && isTier3Plus ? '#18181b' : '#3b0764');
             ctx.beginPath();
             ctx.arc(0, 0, 13, 0, Math.PI * 2);
             ctx.fill();
-            // Hat Cone & Buckle
-            ctx.fillStyle = '#6b21a8';
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#4338ca' : '#6b21a8';
             ctx.beginPath();
-            ctx.moveTo(-6, -8);
-            ctx.lineTo(6, -8);
-            ctx.lineTo(0, -18);
+            ctx.moveTo(-6, -8); ctx.lineTo(6, -8); ctx.lineTo(0, -18);
             ctx.closePath();
             ctx.fill();
-            ctx.fillStyle = '#facc15';
-            ctx.fillRect(-3, -9, 6, 2.5); // Gold Buckle
 
-            // Glowing Arcane Eyes
-            ctx.fillStyle = '#c084fc';
-            ctx.shadowColor = '#c084fc';
+            // Arcane Eyes
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#f97316' : (dominantPath === 3 && isTier3Plus ? '#22c55e' : '#c084fc');
+            ctx.shadowColor = ctx.fillStyle;
             ctx.shadowBlur = 6;
             ctx.beginPath();
             ctx.arc(4, -3, 2.2, 0, Math.PI * 2);
@@ -4417,15 +4853,13 @@
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Gnarled Wooden Staff with Swirling Magic Orb
-            // Staff shaft
+            // Wizard Staff & Swirling Magic Orb
             ctx.fillStyle = '#78350f';
             ctx.fillRect(8, -12, 3, 24);
-            // Glowing Magic Orb atop staff
             const orbPulse = Math.sin(now * 6) * 1.5;
             const orbGrad = ctx.createRadialGradient(9.5, -12, 1, 9.5, -12, 6 + orbPulse);
             orbGrad.addColorStop(0, '#ffffff');
-            orbGrad.addColorStop(0.4, '#c084fc');
+            orbGrad.addColorStop(0.4, dominantPath === 2 && isTier3Plus ? '#f97316' : (dominantPath === 3 && isTier3Plus ? '#22c55e' : '#c084fc'));
             orbGrad.addColorStop(1, 'rgba(147, 51, 234, 0)');
             ctx.fillStyle = orbGrad;
             ctx.beginPath();
@@ -4436,58 +4870,41 @@
             // ==========================================
             // STANDALONE HAZMAT GLUE GUNNER MONKEY
             // ==========================================
-            // 1. Dual pressurized chemical tanks on back
-            ctx.fillStyle = '#475569';
+            // Chemical Tanks
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#15803d' : '#475569';
             ctx.fillRect(-12, -7, 6, 14);
-            // Liquid gauge indicator (lime green)
-            ctx.fillStyle = '#84cc16';
+            // Glue Gauge Indicator
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#84cc16' : (dominantPath === 3 && isTier3Plus ? '#f59e0b' : '#facc15');
             ctx.fillRect(-11, -5, 4, 10);
-            ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(-12, -7, 6, 14);
 
-            // 2. Hazmat Suit Torso
-            ctx.fillStyle = '#65a30d'; // Toxic green protective suit
+            // Hazmat Torso & Head
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#166534' : '#65a30d';
             ctx.beginPath();
             ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#3f6212';
-            ctx.lineWidth = 1.2;
-            ctx.stroke();
 
-            // 3. Monkey Head with Protective Hood & Goggles
-            ctx.fillStyle = '#4d7c0f'; // Hood
+            ctx.fillStyle = '#4d7c0f';
             ctx.beginPath();
             ctx.arc(1, 0, 9.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Hazmat Visor / Goggles (Golden yellow reflective tint)
-            ctx.fillStyle = '#fde047';
+            // Visor
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#22c55e' : '#fde047';
             ctx.beginPath();
             ctx.ellipse(4, -3, 3, 2.5, 0, 0, Math.PI * 2);
             ctx.ellipse(4, 3, 3, 2.5, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 1.2;
-            ctx.stroke();
 
-            // 4. Heavy Glue Dispenser Hose & Nozzle
+            // Glue Hose Nozzle & Dripping Globule
             ctx.fillStyle = '#334155';
             ctx.fillRect(4, 3, 14, 4);
-            // Chrome nozzle tip
-            ctx.fillStyle = '#94a3b8';
-            ctx.beginPath();
-            ctx.moveTo(18, 1);
-            ctx.lineTo(23, 3);
-            ctx.lineTo(23, 7);
-            ctx.lineTo(18, 9);
-            ctx.closePath();
-            ctx.fill();
-
-            // Dripping Viscous Glue Globule at nozzle
+            if (dominantPath === 2 && isTier3Plus) {
+              // Dual Glue Storm Nozzles
+              ctx.fillRect(4, -7, 14, 4);
+            }
             const drip = Math.sin(now * 5) * 1.5;
-            ctx.fillStyle = '#bef264';
-            ctx.shadowColor = '#84cc16';
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#84cc16' : (dominantPath === 3 && isTier3Plus ? '#ea580c' : '#bef264');
+            ctx.shadowColor = ctx.fillStyle;
             ctx.shadowBlur = 6;
             ctx.beginPath();
             ctx.arc(24 + drip, 5, 2.5 + drip * 0.5, 0, Math.PI * 2);
@@ -4498,7 +4915,6 @@
             // ==========================================
             // STANDALONE MONKEY SUBMARINE (WATER ONLY)
             // ==========================================
-            // Animated Water Ripples around hull
             const rip = Math.sin(now * 3) * 2;
             ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
             ctx.lineWidth = 1.5;
@@ -4506,44 +4922,63 @@
             ctx.ellipse(0, 0, 24 + rip, 13 + rip * 0.5, 0, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Yellow Submarine Hull (Sleek hydro-body)
+            // Sub Hull: Energizer Green (Path 1), Ballistic Gray (Path 2), Commander Admiral Gold (Path 3)
             const subGrad = ctx.createLinearGradient(0, -9, 0, 9);
-            subGrad.addColorStop(0, '#fde047');
-            subGrad.addColorStop(0.5, '#eab308');
-            subGrad.addColorStop(1, '#a16207');
+            if (dominantPath === 1 && isTier3Plus) {
+              subGrad.addColorStop(0, '#86efac');
+              subGrad.addColorStop(0.5, '#22c55e');
+              subGrad.addColorStop(1, '#14532d');
+            } else if (dominantPath === 2 && isTier3Plus) {
+              subGrad.addColorStop(0, '#94a3b8');
+              subGrad.addColorStop(0.5, '#475569');
+              subGrad.addColorStop(1, '#1e293b');
+            } else {
+              subGrad.addColorStop(0, isTier5 ? '#fef08a' : '#fde047');
+              subGrad.addColorStop(0.5, isTier5 ? '#facc15' : '#eab308');
+              subGrad.addColorStop(1, '#a16207');
+            }
             ctx.fillStyle = subGrad;
             ctx.beginPath();
             ctx.ellipse(0, 0, 20, 9.5, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#713f12';
+            ctx.strokeStyle = '#451a03';
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            // Stern Propeller & Rudders
+            // Propeller
             ctx.fillStyle = '#475569';
             ctx.fillRect(-22, -4, 4, 8);
-            ctx.fillStyle = '#cbd5e1';
-            const propAng = now * 15;
             ctx.save();
             ctx.translate(-22, 0);
-            ctx.rotate(propAng);
+            ctx.rotate(now * 15);
+            ctx.fillStyle = '#cbd5e1';
             ctx.fillRect(-1.5, -6, 3, 12);
             ctx.restore();
 
-            // Conning Tower / Periscope Sail
-            ctx.fillStyle = '#ca8a04';
-            ctx.fillRect(-4, -6, 9, 12);
-            ctx.strokeStyle = '#713f12';
-            ctx.lineWidth = 1.2;
-            ctx.strokeRect(-4, -6, 9, 12);
+            // Conning Tower / Reactor Core (Path 1) / Missile Silo (Path 2) / Admiral Cap (Path 3)
+            if (dominantPath === 1 && isTier3Plus) {
+              // Open Submerged Nuclear Reactor Core
+              ctx.fillStyle = '#22c55e';
+              ctx.shadowColor = '#4ade80';
+              ctx.shadowBlur = 8;
+              ctx.fillRect(-4, -6, 9, 12);
+              ctx.shadowBlur = 0;
+            } else if (dominantPath === 2 && isTier3Plus) {
+              // Open Ballistic Silo Hatch
+              ctx.fillStyle = '#0f172a';
+              ctx.fillRect(-4, -6, 9, 12);
+              ctx.fillStyle = '#ef4444';
+              ctx.fillRect(-1, -12, 4, 8); // Ballistic Missile Tip
+            } else {
+              ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#ca8a04' : '#ca8a04';
+              ctx.fillRect(-4, -6, 9, 12);
+              // Periscope
+              ctx.fillStyle = '#334155';
+              ctx.fillRect(1, -12, 2.5, 6);
+              ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#facc15' : '#38bdf8';
+              ctx.fillRect(2.5, -12, 3, 2.5);
+            }
 
-            // Periscope with Cyan Optical Glass
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(1, -12, 2.5, 6);
-            ctx.fillStyle = '#38bdf8';
-            ctx.fillRect(2.5, -12, 3, 2.5);
-
-            // Bow Torpedo Tube Opening
             ctx.fillStyle = '#0f172a';
             ctx.beginPath();
             ctx.ellipse(20, 0, 2.5, 4.5, 0, 0, Math.PI * 2);
@@ -4554,35 +4989,32 @@
             // STANDALONE MONKEY ACE (RUNWAY + COMBAT PLANE)
             // ==========================================
             ctx.save();
-            // Undo character-angle rotation for the stationary ground runway
             ctx.rotate(-t.angle);
 
-            // Ground Runway Tarmac Strip at (0, 0)
+            // Ground Runway
             ctx.fillStyle = '#1e293b';
             ctx.fillRect(-18, -11, 36, 22);
             ctx.strokeStyle = '#475569';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(-18, -11, 36, 22);
-            // Yellow Dashed Runway Centerlines
             ctx.fillStyle = '#facc15';
             ctx.fillRect(-13, -1, 6, 2);
             ctx.fillRect(-2, -1, 6, 2);
             ctx.fillRect(9, -1, 6, 2);
 
-            // Flying Fighter Plane at (curX - x, curY - y)
+            // Flying Fighter Plane
             const dx = (t.curX !== undefined ? t.curX : t.x) - t.x;
             const dy = (t.curY !== undefined ? t.curY : t.y) - t.y;
             ctx.translate(dx, dy);
             ctx.rotate(t.angle);
 
-            // Aerial Shadow
             ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
             ctx.beginPath();
             ctx.ellipse(0, 16, 16, 7, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Swept Wings
-            ctx.fillStyle = '#64748b';
+            // Aircraft Fuselage & Wings: Sky Shredder Jet (Path 1), Tsar Bomba (Path 2), Flying Fortress (Path 3)
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#3b82f6' : (dominantPath === 2 && isTier3Plus ? '#15803d' : (dominantPath === 3 && isTier3Plus ? '#0f172a' : '#64748b'));
             ctx.beginPath();
             ctx.moveTo(-5, -20);
             ctx.lineTo(4, -20);
@@ -4593,28 +5025,23 @@
             ctx.lineTo(-2, 0);
             ctx.closePath();
             ctx.fill();
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 1.2;
-            ctx.stroke();
 
-            // Wingtip Dart Pods
-            ctx.fillStyle = '#dc2626';
+            // Wingtip Pods
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#facc15' : '#dc2626';
             ctx.fillRect(-3, -18, 6, 3);
             ctx.fillRect(-3, 15, 6, 3);
 
-            // Aircraft Fuselage
-            ctx.fillStyle = '#94a3b8';
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#1e293b' : '#94a3b8';
             ctx.beginPath();
-            ctx.ellipse(1, 0, 17, 5.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(1, 0, dominantPath === 3 && isTier3Plus ? 20 : 17, 5.5, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Cockpit Canopy (Tinted Cyan Glass)
             ctx.fillStyle = '#38bdf8';
             ctx.beginPath();
             ctx.ellipse(4, 0, 5, 2.5, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Twin Spinning Propeller Blurs
+            // Propellers
             ctx.fillStyle = 'rgba(241, 245, 249, 0.6)';
             ctx.beginPath();
             ctx.ellipse(1, -12, 1.5, 7, now * 20, 0, Math.PI * 2);
@@ -4629,14 +5056,12 @@
             ctx.save();
             ctx.rotate(-t.angle);
 
-            // Ground Concrete Helipad
             ctx.fillStyle = '#334155';
             ctx.fillRect(-16, -16, 32, 32);
             ctx.strokeStyle = '#64748b';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(-16, -16, 32, 32);
 
-            // Yellow Helipad "H" Marking
             ctx.strokeStyle = '#facc15';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
@@ -4648,20 +5073,18 @@
             ctx.textBaseline = 'middle';
             ctx.fillText('H', 0, 0);
 
-            // Flying Helicopter at (curX - x, curY - y)
             const hx = (t.curX !== undefined ? t.curX : t.x) - t.x;
             const hy = (t.curY !== undefined ? t.curY : t.y) - t.y;
             ctx.translate(hx, hy);
             ctx.rotate(t.angle);
 
-            // Aerial Shadow
             ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
             ctx.beginPath();
             ctx.ellipse(0, 18, 15, 8, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Tail Boom & Small Spinning Tail Rotor
-            ctx.fillStyle = '#15803d';
+            // Tail Boom
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#0f172a' : '#15803d';
             ctx.fillRect(-22, -2, 16, 4);
             ctx.save();
             ctx.translate(-22, 0);
@@ -4670,8 +5093,8 @@
             ctx.fillRect(-1, -5, 2, 10);
             ctx.restore();
 
-            // Helicopter Fuselage (Camo Olive)
-            ctx.fillStyle = '#166534';
+            // Chopper Fuselage: Apache Prime (Path 1), Chinook (Path 2), Comanche (Path 3)
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#dc2626' : (dominantPath === 2 && isTier3Plus ? '#2563eb' : (dominantPath === 3 && isTier3Plus ? '#18181b' : '#166534'));
             ctx.beginPath();
             ctx.ellipse(0, 0, 14, 9, 0, 0, Math.PI * 2);
             ctx.fill();
@@ -4679,26 +5102,24 @@
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Stub Wings & Dart Pods
+            // Stub Wings / Weapon Mounts
             ctx.fillStyle = '#334155';
             ctx.fillRect(-3, -12, 6, 24);
-            ctx.fillStyle = '#dc2626';
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#38bdf8' : '#dc2626';
             ctx.fillRect(-2, -14, 5, 3);
             ctx.fillRect(-2, 11, 5, 3);
 
-            // Rounded Bubble Cockpit Glass
             ctx.fillStyle = '#38bdf8';
             ctx.beginPath();
             ctx.ellipse(6, 0, 6, 5, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Main Spinning Dual/Quad Rotor Blades
+            // Spinning Rotor Blades
             ctx.save();
             ctx.rotate(now * 22);
             ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
             ctx.fillRect(-22, -1.8, 44, 3.6);
             ctx.fillRect(-1.8, -22, 3.6, 44);
-            // Rotor Hub Cap
             ctx.fillStyle = '#0f172a';
             ctx.beginPath();
             ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
@@ -4710,112 +5131,123 @@
             // ==========================================
             // STANDALONE MORTAR MONKEY (SANDBAGS + CANNON)
             // ==========================================
-            // Sandbag Emplacement Ring
             for (let i = 0; i < 6; i++) {
               const sa = (Math.PI * 2 / 6) * i;
-              ctx.fillStyle = '#d97706';
+              ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#991b1b' : '#d97706';
               ctx.beginPath();
               ctx.ellipse(Math.cos(sa) * 15, Math.sin(sa) * 15, 6, 4, sa, 0, Math.PI * 2);
               ctx.fill();
-              ctx.strokeStyle = '#92400e';
-              ctx.lineWidth = 1;
-              ctx.stroke();
             }
 
-            // Heavy Steel Mortar Tube (Angled upward)
+            // Tube
             const mGrad = ctx.createLinearGradient(0, -6, 0, 6);
-            mGrad.addColorStop(0, '#475569');
-            mGrad.addColorStop(0.5, '#1e293b');
+            mGrad.addColorStop(0, dominantPath === 1 && isTier3Plus ? '#0f172a' : '#475569');
+            mGrad.addColorStop(0.5, dominantPath === 1 && isTier3Plus ? '#1e293b' : '#1e293b');
             mGrad.addColorStop(1, '#0f172a');
             ctx.fillStyle = mGrad;
-            ctx.fillRect(-6, -6, 20, 12);
-            // Reinforced Muzzle Ring
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(14, -7.5, 4, 15);
-            // Dark Mortar Bore
+            ctx.fillRect(-6, -6, dominantPath === 1 && isTier3Plus ? 24 : 20, dominantPath === 1 && isTier3Plus ? 14 : 12);
+
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#f97316' : '#334155';
+            ctx.fillRect(dominantPath === 1 && isTier3Plus ? 18 : 14, -7.5, 4, 15);
+
             ctx.fillStyle = '#020617';
             ctx.beginPath();
-            ctx.ellipse(18, 0, 2, 6, 0, 0, Math.PI * 2);
+            ctx.ellipse(dominantPath === 1 && isTier3Plus ? 22 : 18, 0, 2, 6, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Gunner Monkey Silhouette beside tube
+            // Gunner
             ctx.fillStyle = '#78350f';
             ctx.beginPath();
             ctx.arc(-8, 9, 6, 0, Math.PI * 2);
             ctx.fill();
-            // Olive Steel Helmet
-            ctx.fillStyle = '#15803d';
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#1e293b' : '#15803d';
             ctx.beginPath();
             ctx.arc(-8, 9, 6.5, Math.PI, Math.PI * 2);
             ctx.fill();
-            // Artillery Shell in hand
-            ctx.fillStyle = '#eab308';
+
+            ctx.fillStyle = isTier5 ? '#facc15' : '#eab308';
             ctx.fillRect(-3, 6, 7, 3.5);
 
           } else if (t.typeKey === 'dartling') {
             // ==========================================
             // STANDALONE DARTLING GUNNER (MINIGUN ROTARY)
             // ==========================================
-            // Commando Monkey Torso
-            ctx.fillStyle = '#166534'; // Camo Fatigues
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#1e293b' : '#166534';
             ctx.beginPath();
             ctx.ellipse(-4, 0, 9, 8, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Head & Red/Green Commando Bandana
             ctx.fillStyle = '#78350f';
             ctx.beginPath();
             ctx.arc(-1, 0, 8.5, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#dc2626'; // Red Bandana
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#3b82f6' : '#dc2626';
             ctx.fillRect(-3, -7, 4, 14);
 
-            // Heavy Gatling Gun Receiver & Ammo Drum
+            // Minigun Barrel: Laser Accelerator (Path 1), Hydra Rockets (Path 2), Buckshot Cluster (Path 3)
             ctx.fillStyle = '#1e293b';
             ctx.fillRect(2, -5, 10, 10);
-            ctx.fillStyle = '#334155';
-            ctx.beginPath();
-            ctx.arc(3, -9, 5, 0, Math.PI * 2); // Round Ammo Drum
-            ctx.fill();
-            // Brass bullet belt
-            ctx.fillStyle = '#eab308';
-            ctx.fillRect(3, -5, 3, 4);
 
-            // 6-Barrel Rotary Gatling Cluster
-            const spin = now * 18;
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(12, -4.5, 14, 9);
-            // Rotating Barrels
-            ctx.fillStyle = '#0f172a';
-            for (let b = 0; b < 6; b++) {
-              const ba = (Math.PI * 2 / 6) * b + spin;
-              ctx.fillRect(25, Math.sin(ba) * 3.5 - 1, 3, 2);
+            if (dominantPath === 1 && isTier3Plus) {
+              // High-Tech Laser Accelerator Barrel
+              ctx.fillStyle = '#0284c7';
+              ctx.fillRect(12, -4, 16, 8);
+              ctx.fillStyle = isTier5 ? '#facc15' : '#38bdf8';
+              ctx.shadowColor = ctx.fillStyle;
+              ctx.shadowBlur = 8;
+              ctx.fillRect(24, -3, 6, 6);
+              ctx.shadowBlur = 0;
+            } else if (dominantPath === 2 && isTier3Plus) {
+              // Hydra Rocket Pod
+              ctx.fillStyle = '#334155';
+              ctx.fillRect(12, -7, 12, 14);
+              ctx.fillStyle = '#dc2626';
+              for (const ry of [-5, 0, 5]) {
+                ctx.beginPath();
+                ctx.arc(24, ry, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            } else {
+              // 6-Barrel Rotary Gatling
+              const spin = now * 18;
+              ctx.fillStyle = '#475569';
+              ctx.fillRect(12, -4.5, 14, 9);
+              ctx.fillStyle = '#0f172a';
+              for (let b = 0; b < 6; b++) {
+                const ba = (Math.PI * 2 / 6) * b + spin;
+                ctx.fillRect(25, Math.sin(ba) * 3.5 - 1, 3, 2);
+              }
             }
 
           } else if (t.typeKey === 'alchemist') {
             // ==========================================
             // STANDALONE ALCHEMIST MONKEY (POTIONS & BEAKER)
             // ==========================================
-            // Brown Leather Alchemist Coat
-            ctx.fillStyle = '#78350f';
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#ca8a04' : '#78350f';
             ctx.beginPath();
             ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Potion Bandolier Strap Across Chest
+            // Bandolier Vials
             ctx.fillStyle = '#451a03';
             ctx.fillRect(-6, -7, 3, 14);
-            // 3 Colorful Glass Vials on bandolier
             ctx.fillStyle = '#ef4444'; ctx.fillRect(-6, -6, 3, 3);
             ctx.fillStyle = '#38bdf8'; ctx.fillRect(-6, -1, 3, 3);
             ctx.fillStyle = '#22c55e'; ctx.fillRect(-6, 4, 3, 3);
 
-            // Alchemist Cowl Head & Spectacles
             ctx.fillStyle = '#92400e';
             ctx.beginPath();
             ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
             ctx.fill();
-            // Brass Spectacles
+
+            // Top Hat (Path 3) or Cowl
+            if (dominantPath === 3 && isTier3Plus) {
+              ctx.fillStyle = '#1e293b';
+              ctx.fillRect(-5, -14, 10, 8);
+              ctx.fillRect(-8, -7, 16, 2.5);
+            }
+
+            // Spectacles
             ctx.strokeStyle = '#eab308';
             ctx.lineWidth = 1.2;
             ctx.beginPath();
@@ -4823,10 +5255,9 @@
             ctx.arc(3.5, 2.5, 2.2, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Raised Hand holding Conical Erlenmeyer Potion Flask
+            // Flask
             ctx.save();
             ctx.translate(11, 4);
-            // Glass Flask
             ctx.fillStyle = 'rgba(241, 245, 249, 0.4)';
             ctx.strokeStyle = '#cbd5e1';
             ctx.lineWidth = 1;
@@ -4837,49 +5268,43 @@
             ctx.fill();
             ctx.stroke();
 
-            // Bubbling Glowing Purple/Green Potion
+            // Bubbling Potion: Golden (Path 3), Berserker Orange (Path 1), Monster Potion (Path 2)
             const bP = Math.sin(now * 7) * 1.2;
-            ctx.fillStyle = '#a855f7';
-            ctx.shadowColor = '#c084fc';
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#ea580c' : (dominantPath === 3 && isTier3Plus ? '#facc15' : '#a855f7');
+            ctx.shadowColor = ctx.fillStyle;
             ctx.shadowBlur = 8;
             ctx.beginPath();
             ctx.moveTo(4, 3); ctx.lineTo(-4, 3); ctx.lineTo(-1, -1); ctx.lineTo(1, -1);
             ctx.closePath();
             ctx.fill();
             ctx.shadowBlur = 0;
-            // Rising Bubble
-            ctx.fillStyle = '#e9d5ff';
-            ctx.beginPath();
-            ctx.arc(0, -2 + bP, 1.2, 0, Math.PI * 2);
-            ctx.fill();
             ctx.restore();
 
           } else if (t.typeKey === 'druid') {
             // ==========================================
             // STANDALONE NATURE DRUID MONKEY
             // ==========================================
-            // Mossy Fur & Leaves
-            ctx.fillStyle = '#15803d';
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#450a0a' : '#15803d';
             ctx.beginPath();
             ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Druid Head & Horned Antlers
             ctx.fillStyle = '#78350f';
             ctx.beginPath();
             ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
             ctx.fill();
-            // Antler Horns
-            ctx.strokeStyle = '#b45309';
+
+            // Horns: Hardwood Antlers (Base/Path 2), Lightning Antlers (Path 1), Wrath Crimson Horns (Path 3)
+            ctx.strokeStyle = dominantPath === 1 && isTier3Plus ? '#38bdf8' : (dominantPath === 3 && isTier3Plus ? '#dc2626' : '#b45309');
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(-2, -7); ctx.lineTo(-6, -14); ctx.lineTo(-10, -12);
             ctx.moveTo(-2, 7);  ctx.lineTo(-6, 14);  ctx.lineTo(-10, 12);
             ctx.stroke();
 
-            // Glowing Nature Jade Eyes
-            ctx.fillStyle = '#4ade80';
-            ctx.shadowColor = '#22c55e';
+            // Eyes
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#38bdf8' : (dominantPath === 3 && isTier3Plus ? '#ef4444' : '#4ade80');
+            ctx.shadowColor = ctx.fillStyle;
             ctx.shadowBlur = 6;
             ctx.beginPath();
             ctx.arc(4, -2.5, 2, 0, Math.PI * 2);
@@ -4887,13 +5312,12 @@
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Ancient Runic Oak Staff with Swirling Leaf Motes
+            // Staff & Orb
             ctx.fillStyle = '#78350f';
             ctx.fillRect(8, -13, 3, 26);
-            // Glowing Jade Crystal Crown
             const dPulse = Math.sin(now * 5) * 1.5;
-            ctx.fillStyle = '#22c55e';
-            ctx.shadowColor = '#4ade80';
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#38bdf8' : (dominantPath === 3 && isTier3Plus ? '#dc2626' : '#22c55e');
+            ctx.shadowColor = ctx.fillStyle;
             ctx.shadowBlur = 8;
             ctx.beginPath();
             ctx.arc(9.5, -13, 4 + dPulse * 0.5, 0, Math.PI * 2);
@@ -4904,41 +5328,45 @@
             // ==========================================
             // STANDALONE BANANA FARM (PALM TREE & CRATES)
             // ==========================================
-            // Harvest Wooden Crates on ground
             ctx.fillStyle = '#78350f';
             ctx.fillRect(-14, 4, 11, 10);
             ctx.fillRect(4, 5, 10, 9);
-            ctx.strokeStyle = '#451a03';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(-14, 4, 11, 10);
-            ctx.strokeRect(4, 5, 10, 9);
-            // Bananas overflowing in crate
-            ctx.fillStyle = '#facc15';
+
+            // Crates content: Bananas, Gold Bars (Path 2), Cash Sacks (Path 3)
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#facc15' : '#fde047';
             ctx.beginPath();
             ctx.ellipse(-9, 4, 4, 2, -0.3, 0, Math.PI * 2);
             ctx.ellipse(9, 5, 4, 2, 0.4, 0, Math.PI * 2);
             ctx.fill();
 
-            // Wooden Palm Trunk with rings
-            ctx.fillStyle = '#92400e';
+            // Trunk: Glass Research Facility (Path 1), Bank Pillars (Path 2), Marketplace Wood (Path 3)
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#0284c7' : '#92400e';
             ctx.fillRect(-4, -6, 8, 16);
-            ctx.fillStyle = '#78350f';
-            ctx.fillRect(-4, -2, 8, 2);
-            ctx.fillRect(-4, 3, 8, 2);
 
-            // Tropical Palm Fronds Canopy (6 wide green leaves)
-            ctx.fillStyle = '#16a34a';
-            for (let l = 0; l < 6; l++) {
-              const la = (Math.PI * 2 / 6) * l;
+            // Palm Canopy or Research Dome
+            if (dominantPath === 1 && isTier3Plus) {
+              // Glass Research Dome
+              ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
               ctx.beginPath();
-              ctx.moveTo(0, -6);
-              ctx.quadraticCurveTo(Math.cos(la) * 14, Math.sin(la) * 14 - 10, Math.cos(la) * 22, Math.sin(la) * 22 - 6);
-              ctx.quadraticCurveTo(Math.cos(la + 0.3) * 14, Math.sin(la + 0.3) * 14 - 6, 0, -6);
+              ctx.arc(0, -6, 16, Math.PI, Math.PI * 2);
               ctx.fill();
+              ctx.strokeStyle = '#38bdf8';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+            } else {
+              ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#15803d' : '#16a34a';
+              for (let l = 0; l < 6; l++) {
+                const la = (Math.PI * 2 / 6) * l;
+                ctx.beginPath();
+                ctx.moveTo(0, -6);
+                ctx.quadraticCurveTo(Math.cos(la) * 14, Math.sin(la) * 14 - 10, Math.cos(la) * 22, Math.sin(la) * 22 - 6);
+                ctx.quadraticCurveTo(Math.cos(la + 0.3) * 14, Math.sin(la + 0.3) * 14 - 6, 0, -6);
+                ctx.fill();
+              }
             }
 
-            // Hanging Golden Bananas under fronds
-            ctx.fillStyle = '#fde047';
+            // Bananas
+            ctx.fillStyle = isTier5 ? '#facc15' : '#fde047';
             for (let b = 0; b < 4; b++) {
               const ba = (Math.PI * 2 / 4) * b + 0.4;
               ctx.beginPath();
@@ -4950,14 +5378,13 @@
             // ==========================================
             // STANDALONE SPIKE FACTORY (BUNKER & CHUTE)
             // ==========================================
-            // Heavy Factory Base Structure
-            ctx.fillStyle = '#334155';
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#1e1b4b' : '#334155';
             ctx.fillRect(-14, -12, 24, 24);
-            ctx.strokeStyle = '#1e293b';
+            ctx.strokeStyle = isTier5 ? '#facc15' : '#1e293b';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(-14, -12, 24, 24);
 
-            // Yellow/Black Hazard Stripes
+            // Hazard Stripes
             ctx.fillStyle = '#facc15';
             ctx.fillRect(-14, 8, 24, 4);
             ctx.fillStyle = '#0f172a';
@@ -4965,29 +5392,26 @@
             ctx.fillRect(-2, 8, 4, 4);
             ctx.fillRect(6, 8, 4, 4);
 
-            // Twin Exhaust Smokestacks with Steam Puffs
+            // Smokestacks / Foundry Chimneys (Path 1)
             ctx.fillStyle = '#475569';
             ctx.fillRect(-11, -18, 5, 7);
             ctx.fillRect(1, -18, 5, 7);
             const steam = Math.sin(now * 4) * 2;
-            ctx.fillStyle = 'rgba(241, 245, 249, 0.6)';
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? 'rgba(239, 68, 68, 0.7)' : 'rgba(241, 245, 249, 0.6)';
             ctx.beginPath();
             ctx.arc(-8.5, -20 + steam, 3, 0, Math.PI * 2);
             ctx.arc(3.5, -21 - steam, 3.2, 0, Math.PI * 2);
             ctx.fill();
 
-            // Inclined Conveyor Belt Chute (Protruding forward)
+            // Conveyor Chute
             ctx.fillStyle = '#1e293b';
             ctx.beginPath();
-            ctx.moveTo(10, -6);
-            ctx.lineTo(20, -4);
-            ctx.lineTo(20, 6);
-            ctx.lineTo(10, 6);
+            ctx.moveTo(10, -6); ctx.lineTo(20, -4); ctx.lineTo(20, 6); ctx.lineTo(10, 6);
             ctx.closePath();
             ctx.fill();
 
-            // Fresh Steel Spike sliding off conveyor
-            ctx.fillStyle = '#cbd5e1';
+            // Produced Spikes: Molten (Path 1), Carpet Spike (Path 2), Perma-Spike Titanium (Path 3)
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#ea580c' : (dominantPath === 3 && isTier3Plus ? '#f8fafc' : '#cbd5e1');
             ctx.beginPath();
             ctx.moveTo(17, 0); ctx.lineTo(23, -3); ctx.lineTo(23, 3);
             ctx.closePath();
@@ -4997,97 +5421,90 @@
             // ==========================================
             // STANDALONE MONKEY VILLAGE (TRIBAL HUT + RADAR)
             // ==========================================
-            // Wooden Timber Hut Base
-            ctx.fillStyle = '#78350f';
+            ctx.fillStyle = dominantPath === 3 && isTier3Plus ? '#a16207' : '#78350f';
             ctx.fillRect(-13, -11, 26, 22);
             ctx.strokeStyle = '#451a03';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(-13, -11, 26, 22);
 
-            // Thatched Straw Overhang Roof
-            ctx.fillStyle = '#ca8a04';
+            // Roof
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#0284c7' : '#ca8a04';
             ctx.beginPath();
-            ctx.moveTo(0, -19);
-            ctx.lineTo(17, -8);
-            ctx.lineTo(-17, -8);
+            ctx.moveTo(0, -19); ctx.lineTo(17, -8); ctx.lineTo(-17, -8);
             ctx.closePath();
             ctx.fill();
-            ctx.strokeStyle = '#854d0e';
-            ctx.lineWidth = 1.2;
-            ctx.stroke();
 
-            // Front Village Doorway & Banners
+            // Doorway
             ctx.fillStyle = '#1e293b';
             ctx.fillRect(-4, 0, 8, 11);
-            // Red Tribal Banner
-            ctx.fillStyle = '#ef4444';
+            ctx.fillStyle = isTier5 ? '#facc15' : '#ef4444';
             ctx.beginPath();
             ctx.moveTo(-10, -5); ctx.lineTo(-5, 0); ctx.lineTo(-10, 2);
             ctx.fill();
 
-            // Rotating Radar Scanner Antenna on Roof
-            ctx.save();
-            ctx.translate(0, -18);
-            ctx.rotate(now * 3);
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(-8, 0); ctx.lineTo(8, 0);
-            ctx.stroke();
-            ctx.fillStyle = '#f8fafc';
-            ctx.beginPath();
-            ctx.arc(0, 0, 3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            // Rooftop: Ballista (Path 1), Radar Dish (Path 2), Flagpole (Path 3)
+            if (dominantPath === 1 && isTier3Plus) {
+              // Primary Mentoring Ballista
+              ctx.fillStyle = '#475569';
+              ctx.fillRect(-3, -22, 6, 8);
+              ctx.fillStyle = '#cbd5e1';
+              ctx.fillRect(-8, -20, 16, 2);
+            } else {
+              // Rotating Scanner Dish
+              ctx.save();
+              ctx.translate(0, -18);
+              ctx.rotate(now * (dominantPath === 2 && isTier3Plus ? 6 : 3));
+              ctx.strokeStyle = dominantPath === 2 && isTier3Plus ? '#38bdf8' : '#38bdf8';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(-8, 0); ctx.lineTo(8, 0);
+              ctx.stroke();
+              ctx.fillStyle = '#f8fafc';
+              ctx.beginPath();
+              ctx.arc(0, 0, 3, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
 
           } else if (t.typeKey === 'engineer') {
             // ==========================================
             // STANDALONE ENGINEER MONKEY (HARDHAT & WRENCH)
             // ==========================================
-            // High-Vis Orange Vest & Blue Denim Overalls
-            ctx.fillStyle = '#f97316'; // Orange Vest
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#3b82f6' : '#f97316';
             ctx.beginPath();
             ctx.ellipse(-3, 0, 9, 8, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#1d4ed8'; // Blue Denim
+            ctx.fillStyle = '#1d4ed8';
             ctx.fillRect(-5, 2, 6, 6);
 
-            // Engineer Monkey Head
             ctx.fillStyle = '#78350f';
             ctx.beginPath();
             ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Bright Safety-Yellow Hardhat with Brim
-            ctx.fillStyle = '#facc15';
+            // Hardhat / Welder Mask
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? '#334155' : '#facc15';
             ctx.beginPath();
             ctx.ellipse(-1, -3, 8.5, 8.5, 0, Math.PI, Math.PI * 2);
             ctx.fill();
-            // Hardhat Brim
             ctx.fillRect(-8, -4, 16, 2.5);
-            // Flashlight reflector on front of hardhat
-            ctx.fillStyle = '#f8fafc';
-            ctx.beginPath();
-            ctx.arc(4, -4, 1.8, 0, Math.PI * 2);
-            ctx.fill();
 
-            // Giant Silver Monkey Wrench held in hand
+            // Wrench / Overclock Tool
             ctx.save();
             ctx.translate(9, 4);
             ctx.rotate(0.3);
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillRect(-2, -8, 4, 16); // Handle
-            // Wrench Jaw
+            ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#38bdf8' : '#94a3b8';
+            ctx.fillRect(-2, -8, 4, 16);
             ctx.fillStyle = '#cbd5e1';
             ctx.beginPath();
             ctx.arc(0, -9, 4.5, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#0f172a'; // Jaw cutout
+            ctx.fillStyle = '#0f172a';
             ctx.fillRect(-2, -13, 4, 4);
             ctx.restore();
 
-            // Mini Sentry Gun Turret stationed on ground
-            ctx.fillStyle = '#dc2626';
+            // Sentry Turret Companion
+            ctx.fillStyle = dominantPath === 1 && isTier3Plus ? (isTier5 ? '#facc15' : '#38bdf8') : '#dc2626';
             ctx.beginPath();
             ctx.arc(-8, 9, 4, 0, Math.PI * 2);
             ctx.fill();
@@ -5098,53 +5515,62 @@
             // ==========================================
             // STANDALONE BEAST HANDLER MONKEY & MINI RAPTOR
             // ==========================================
-            // Primal Fur & Bone Necklace
             ctx.fillStyle = '#78350f';
             ctx.beginPath();
             ctx.ellipse(-4, 0, 8.5, 7.5, 0, 0, Math.PI * 2);
             ctx.fill();
-            // Dinosaur Tooth Necklace
-            ctx.fillStyle = '#f8fafc';
-            for (let tooth = -4; tooth <= 4; tooth += 2.5) {
-              ctx.beginPath();
-              ctx.moveTo(tooth, -3); ctx.lineTo(tooth + 1, 0); ctx.lineTo(tooth - 1, 0);
-              ctx.fill();
-            }
 
-            // Beast Handler Head & Feather/Horn Accents
             ctx.fillStyle = '#92400e';
             ctx.beginPath();
             ctx.arc(-1, 0, 8, 0, Math.PI * 2);
             ctx.fill();
-            // Horned Whispering Whistle in hand
+
             ctx.fillStyle = '#ca8a04';
             ctx.fillRect(4, 2, 7, 3);
 
-            // Mini Raptor Beast Pet Companion (at side)
+            // Beast Pet: Shark (Path 1), Dinosaur T-Rex (Path 2), Golden Eagle (Path 3)
             ctx.save();
             ctx.translate(6, 7);
-            // Raptor Scaly Green Body
-            ctx.fillStyle = '#15803d';
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 6, 4, 0.2, 0, Math.PI * 2);
-            ctx.fill();
-            // Raptor Snout & Teeth
-            ctx.beginPath();
-            ctx.moveTo(4, -3); ctx.lineTo(10, 0); ctx.lineTo(4, 2);
-            ctx.closePath();
-            ctx.fill();
-            // Wild Golden Eye
-            ctx.fillStyle = '#facc15';
-            ctx.beginPath();
-            ctx.arc(5, -1.5, 1.2, 0, Math.PI * 2);
-            ctx.fill();
-            // Whip Tail
-            ctx.strokeStyle = '#15803d';
-            ctx.lineWidth = 1.8;
-            ctx.beginPath();
-            ctx.moveTo(-5, 0);
-            ctx.quadraticCurveTo(-9, 2, -12, -2);
-            ctx.stroke();
+            if (dominantPath === 1 && isTier3Plus) {
+              // Megalodon / Shark Fin in Water Pool
+              ctx.fillStyle = '#0284c7';
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 7, 4, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#334155';
+              ctx.beginPath();
+              ctx.moveTo(-2, 2); ctx.lineTo(2, -6); ctx.lineTo(4, 2);
+              ctx.closePath();
+              ctx.fill();
+            } else if (dominantPath === 3 && isTier3Plus) {
+              // Golden Horned Pouākai / Giant Bird
+              ctx.fillStyle = isTier5 ? '#facc15' : '#ca8a04';
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 6, 4, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#fef08a';
+              ctx.fillRect(4, -2, 5, 2);
+            } else {
+              // Raptor / T-Rex Body
+              ctx.fillStyle = dominantPath === 2 && isTier3Plus ? '#dc2626' : '#15803d';
+              ctx.beginPath();
+              ctx.ellipse(0, 0, dominantPath === 2 && isTier3Plus ? 8 : 6, 4, 0.2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.beginPath();
+              ctx.moveTo(4, -3); ctx.lineTo(10, 0); ctx.lineTo(4, 2);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#facc15';
+              ctx.beginPath();
+              ctx.arc(5, -1.5, 1.2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = dominantPath === 2 && isTier3Plus ? '#dc2626' : '#15803d';
+              ctx.lineWidth = 1.8;
+              ctx.beginPath();
+              ctx.moveTo(-5, 0);
+              ctx.quadraticCurveTo(-9, 2, -12, -2);
+              ctx.stroke();
+            }
             ctx.restore();
 
           } else {
@@ -5164,7 +5590,7 @@
             ctx.fillText(TOWER_SPECS[t.typeKey].icon, 0, 0);
           }
         }
-        ctx.restore();
+ctx.restore();
       }
 
       // 8. Projectiles Rendering
