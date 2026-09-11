@@ -619,7 +619,7 @@
   <!-- Top Header Bar -->
   <div class="top-header">
     <div class="lobby-badge">
-      <span class="version-tag" title="Build Version">v1.3.0-COOP-4P</span>
+      <span class="version-tag" title="Build Version">v1.3.1-COOP</span>
       <button class="btn-lobby-trigger" onclick="openLanModal()">
         <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
       </button>
@@ -662,7 +662,7 @@
       Captures all network events, WebRTC state, connection handshakes, and uncaught errors.
     </div>
     <div id="debug-log-view" class="debug-log-view">
-      [System] Diagnostic log initialized (v1.3.0-COOP-4P)
+      [System] Diagnostic log initialized (v1.3.1-COOP)
     </div>
     <div style="display: flex; gap: 10px; justify-content: flex-end;">
       <button onclick="clearDebugLog()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Clear Log</button>
@@ -1213,6 +1213,7 @@
     let myPlayerName = 'Host (P1)';
     let peerConnected = false;
     let activeRoomCode = null;
+    let localClientId = 'btd_' + Math.random().toString(36).substring(2, 11);
 
     // 4-Player Slot Registry & Live State
     const PLAYER_SLOTS = {
@@ -1492,6 +1493,7 @@
               type: 'UPGRADE_TOWER',
               towerId: inspectedTower.id,
               pathNum: pathNum,
+              targetTier: inspectedTower[tierKey],
               senderSlot: mySlot,
               senderCash: cash
             });
@@ -3254,7 +3256,7 @@
       showToast('Debug log cleared.');
     }
     function copyDebugLog() {
-      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.3.0-COOP-4P) ===\n`;
+      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.3.1-COOP) ===\n`;
       report += `Time: ${new Date().toISOString()}\n`;
       report += `User Agent: ${navigator.userAgent}\n`;
       report += `MQTT Library Available: ${typeof mqtt !== 'undefined'}\n`;
@@ -3485,7 +3487,7 @@
       logNet(`[Cloud] Connecting to encrypted WebSocket relay (${brokerUrl})...`);
       showToast('Hosting 4-Player Cloud Session...');
 
-      const clientId = 'btd_h_' + Math.random().toString(16).substring(2, 10);
+      const clientId = localClientId;
       try {
         mqttClient = mqtt.connect(brokerUrl, {
           clientId: clientId,
@@ -3517,7 +3519,7 @@
       mqttClient.on('message', (topic, payload) => {
         try {
           const msg = JSON.parse(payload.toString());
-          if (msg.senderClientId === clientId) return; // Ignore own messages
+          if (msg.senderClientId === localClientId || msg.senderClientId === clientId) return; // Ignore own messages
 
           if (msg.type === 'JOIN_HELLO') {
             // Find next available slot: p2, p3, p4
@@ -3609,7 +3611,7 @@
       logNet(`[Cloud] Connecting to encrypted WebSocket relay for room "${targetCode}"...`);
       showToast(`Joining room ${targetCode}...`);
 
-      const clientId = 'btd_c_' + Math.random().toString(16).substring(2, 10);
+      const clientId = localClientId;
       try {
         mqttClient = mqtt.connect(brokerUrl, {
           clientId: clientId,
@@ -3645,9 +3647,9 @@
       mqttClient.on('message', (topic, payload) => {
         try {
           const msg = JSON.parse(payload.toString());
-          if (msg.senderClientId === clientId) return; // Ignore own messages
+          if (msg.senderClientId === localClientId || msg.senderClientId === clientId) return; // Ignore own messages
 
-          if (msg.type === 'SLOT_ASSIGNED' && msg.targetClientId === clientId) {
+          if (msg.type === 'SLOT_ASSIGNED' && (msg.targetClientId === clientId || msg.targetClientId === localClientId)) {
             mySlot = msg.assignedSlot;
             myPlayerName = `${mySlot.toUpperCase()} (You)`;
             peerConnected = true;
@@ -3691,7 +3693,7 @@
               updateUI();
               updateWavePreview();
             }
-          } else if (msg.type === 'ROOM_FULL' && msg.targetClientId === clientId) {
+          } else if (msg.type === 'ROOM_FULL' && (msg.targetClientId === clientId || msg.targetClientId === localClientId)) {
             showToast('Room is full (4/4 players max)!', true);
             logNet('❌ Could not join: Room is full (4/4 players max).');
             disconnectCoop(true);
@@ -3977,6 +3979,9 @@
 
     // Unified message transmitter (Publishes to room broadcast topic in Cloud mode)
     function sendNetMessage(msg) {
+      if (!msg.senderClientId) msg.senderClientId = localClientId;
+      if (!msg.senderSlot) msg.senderSlot = mySlot;
+
       if (mqttClient && mqttClient.connected && activeRoomCode) {
         const roomTopic = `btdcoop_v1/${activeRoomCode}/room`;
         const qos = (msg.type === 'CURSOR_MOVE') ? 0 : 1;
@@ -3996,6 +4001,8 @@
     function handleIncomingNetMessage(rawMsg) {
       const msg = rawMsg.payload || rawMsg;
       if (!msg || !msg.type) return;
+      if (msg.senderClientId && msg.senderClientId === localClientId) return;
+      if (msg.senderSlot && msg.senderSlot === mySlot && msg.type !== 'SLOT_ASSIGNED') return;
 
       switch (msg.type) {
         case 'CURSOR_MOVE':
@@ -4014,6 +4021,7 @@
           break;
 
         case 'PLACE_TOWER':
+          if (msg.senderClientId === localClientId || msg.senderSlot === mySlot) return;
           const tData = msg.towerData;
           if (!towers.some(t => t.id === tData.id)) {
             const placedRole = tData.ownerRole || msg.senderSlot || 'p2';
@@ -4031,10 +4039,28 @@
           break;
 
         case 'UPGRADE_TOWER':
+          if (msg.senderClientId === localClientId || msg.senderSlot === mySlot) return;
           const tToUpgrade = towers.find(t => t.id === msg.towerId);
           if (tToUpgrade) {
-            inspectedTower = tToUpgrade;
-            buyUpgrade(msg.pathNum, true);
+            const spec = TOWER_SPECS[tToUpgrade.typeKey];
+            const tierKey = `p${msg.pathNum}Tier`;
+            const upgList = spec.upgrades[`path${msg.pathNum}`];
+            const targetTier = msg.targetTier !== undefined ? msg.targetTier : (tToUpgrade[tierKey] + 1);
+            while (tToUpgrade[tierKey] < targetTier && tToUpgrade[tierKey] < upgList.length) {
+              const upg = upgList[tToUpgrade[tierKey]];
+              if (upg) {
+                tToUpgrade.totalCost += upg.cost;
+                upg.apply(tToUpgrade);
+                tToUpgrade[tierKey]++;
+              } else {
+                break;
+              }
+            }
+            playSfx('magic');
+            createFloatingText(tToUpgrade.x, tToUpgrade.y - 25, `Upgraded!`, (PLAYER_SLOTS[msg.senderSlot] ? PLAYER_SLOTS[msg.senderSlot].color : '#38bdf8'));
+            if (inspectedTower && inspectedTower.id === tToUpgrade.id) {
+              inspectTower(tToUpgrade);
+            }
           }
           if (msg.senderSlot && msg.senderCash !== undefined && PLAYER_SLOTS[msg.senderSlot]) {
             PLAYER_SLOTS[msg.senderSlot].cash = msg.senderCash;
@@ -4043,10 +4069,14 @@
           break;
 
         case 'SELL_TOWER':
+          if (msg.senderClientId === localClientId || msg.senderSlot === mySlot) return;
           const tToSell = towers.find(t => t.id === msg.towerId);
           if (tToSell) {
-            inspectedTower = tToSell;
-            sellInspectedTower(true);
+            createFloatingText(tToSell.x, tToSell.y - 20, `Sold!`, '#ef4444');
+            towers = towers.filter(t => t.id !== msg.towerId);
+            if (inspectedTower && inspectedTower.id === msg.towerId) {
+              inspectTower(null);
+            }
           }
           if (msg.senderSlot && msg.senderCash !== undefined && PLAYER_SLOTS[msg.senderSlot]) {
             PLAYER_SLOTS[msg.senderSlot].cash = msg.senderCash;
@@ -4055,6 +4085,7 @@
           break;
 
         case 'SET_PRIORITY':
+          if (msg.senderClientId === localClientId || msg.senderSlot === mySlot) return;
           const tPrior = towers.find(t => t.id === msg.towerId);
           if (tPrior) {
             tPrior.targetPriority = msg.priority;
@@ -4065,6 +4096,7 @@
           break;
 
         case 'START_WAVE':
+          if (msg.senderClientId === localClientId || msg.senderSlot === mySlot) return;
           triggerNextWave(true);
           createFloatingText(canvas.width / 2, 80, `Round ${currentRound} Started!`, '#38bdf8', 15);
           break;
