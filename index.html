@@ -79,8 +79,22 @@
       border-radius: 4px;
       background: #334155;
     }
-    .dot-p1 { width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; box-shadow: 0 0 6px #3b82f6; }
+    .dot-p1 { width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 6px #38bdf8; }
     .dot-p2 { width: 8px; height: 8px; border-radius: 50%; background: #ec4899; box-shadow: 0 0 6px #ec4899; }
+    .dot-p3 { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+    .dot-p4 { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981; }
+
+    .partner-cash-chip {
+      display: none;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+    .chip-p1 { background: rgba(56,189,248,0.18); border: 1px solid rgba(56,189,248,0.5); color: #7dd3fc; }
+    .chip-p2 { background: rgba(236,72,153,0.18); border: 1px solid rgba(236,72,153,0.5); color: #f472b6; }
+    .chip-p3 { background: rgba(245,158,11,0.18); border: 1px solid rgba(245,158,11,0.5); color: #fbbf24; }
+    .chip-p4 { background: rgba(16,185,129,0.18); border: 1px solid rgba(16,185,129,0.5); color: #34d399; }
 
     .stats-tray {
       display: flex;
@@ -605,13 +619,15 @@
   <!-- Top Header Bar -->
   <div class="top-header">
     <div class="lobby-badge">
-      <span class="version-tag" title="Build Version">v1.2.1-COOP</span>
+      <span class="version-tag" title="Build Version">v1.3.0-COOP-4P</span>
       <button class="btn-lobby-trigger" onclick="openLanModal()">
         <span>🌐</span> <span id="coop-badge-text">LAN / Co-Op Lobby</span>
       </button>
       <div class="coop-status">
-        <div class="player-pill" id="pill-p1"><span class="dot-p1"></span> <span id="name-p1">P1 (Host)</span></div>
-        <div class="player-pill" id="pill-p2"><span class="dot-p2" id="dot-p2-icon" style="background:#64748b; box-shadow:none;"></span> <span id="name-p2">P2 (Waiting...)</span></div>
+        <div class="player-pill" id="pill-p1"><span class="dot-p1" id="dot-p1-icon"></span> <span id="name-p1">P1 (Host)</span></div>
+        <div class="player-pill" id="pill-p2"><span class="dot-p2" id="dot-p2-icon" style="background:#64748b; box-shadow:none;"></span> <span id="name-p2">P2</span></div>
+        <div class="player-pill" id="pill-p3"><span class="dot-p3" id="dot-p3-icon" style="background:#64748b; box-shadow:none;"></span> <span id="name-p3">P3</span></div>
+        <div class="player-pill" id="pill-p4"><span class="dot-p4" id="dot-p4-icon" style="background:#64748b; box-shadow:none;"></span> <span id="name-p4">P4</span></div>
       </div>
       <button style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border: 1px solid #a78bfa; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 8px rgba(124,58,237,0.4);" onclick="openModelViewer()">
         <span>🎨</span> 3D Reference Sheet
@@ -625,9 +641,10 @@
       <div class="stat-badge cash-c" id="cash-tray" style="display: flex; align-items: center; gap: 6px;">
         <span>💰</span>
         <span>$<span id="cash-val">800</span></span>
-        <span id="partner-cash-badge" style="display: none; font-size: 10px; background: rgba(236,72,153,0.18); border: 1px solid rgba(236,72,153,0.5); padding: 1px 6px; border-radius: 4px; color: #f472b6;" title="Partner Cash">
-          <span id="partner-cash-label">P2</span>: $<span id="partner-cash-val">800</span>
-        </span>
+        <span id="cash-chip-p1" class="partner-cash-chip chip-p1" title="P1 Cash">P1: $<span id="val-p1-cash">800</span></span>
+        <span id="cash-chip-p2" class="partner-cash-chip chip-p2" title="P2 Cash">P2: $<span id="val-p2-cash">800</span></span>
+        <span id="cash-chip-p3" class="partner-cash-chip chip-p3" title="P3 Cash">P3: $<span id="val-p3-cash">800</span></span>
+        <span id="cash-chip-p4" class="partner-cash-chip chip-p4" title="P4 Cash">P4: $<span id="val-p4-cash">800</span></span>
       </div>
       <div class="stat-badge round-c">🎈 Round <span id="round-val">1</span>/40</div>
     </div>
@@ -645,7 +662,7 @@
       Captures all network events, WebRTC state, connection handshakes, and uncaught errors.
     </div>
     <div id="debug-log-view" class="debug-log-view">
-      [System] Diagnostic log initialized (v1.2.1-COOP)
+      [System] Diagnostic log initialized (v1.3.0-COOP-4P)
     </div>
     <div style="display: flex; gap: 10px; justify-content: flex-end;">
       <button onclick="clearDebugLog()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Clear Log</button>
@@ -683,14 +700,14 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
         <!-- Host Section -->
         <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
-          <h3 style="font-size: 14px; color: #38bdf8; margin-bottom: 6px;">1. Host Cloud Game</h3>
-          <p style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">Create a cloud room code to give your friend anywhere on the internet.</p>
+          <h3 style="font-size: 14px; color: #38bdf8; margin-bottom: 6px;">1. Host 4-Player Co-Op</h3>
+          <p style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">Create a room code. Up to 3 friends can join simultaneously!</p>
           <div id="cloud-host-code-box" style="display: none;">
-            <label style="font-size: 10.5px; color: #cbd5e1; font-weight: 600;">Share Room Code with Partner:</label>
+            <label style="font-size: 10.5px; color: #cbd5e1; font-weight: 600;">Share Room Code with Friends:</label>
             <div id="display-cloud-room-code" class="room-code-display" onclick="copyCloudRoomCode()" title="Click to copy">----</div>
             <div style="font-size: 10px; color: #10b981; text-align: center; margin-bottom: 8px;">📋 Click code above to copy!</div>
           </div>
-          <button id="btn-host-cloud" class="lan-action-btn" style="background: linear-gradient(135deg, #0284c7, #38bdf8);" onclick="startHostCloud()">Host Cloud Co-Op</button>
+          <button id="btn-host-cloud" class="lan-action-btn" style="background: linear-gradient(135deg, #0284c7, #38bdf8);" onclick="startHostCloud()">Host 4-Player Co-Op</button>
         </div>
 
         <!-- Join Section -->
@@ -1189,17 +1206,33 @@
     let mouse = { x: 0, y: 0 };
     let coopTimer = 0;
 
-    // Networking State (P2P WebRTC & Dedicated WebSocket LAN)
-    let netMode = 'offline'; // 'offline', 'p2p_host', 'p2p_client', 'ws_host', 'ws_client'
+    // Networking State (4-Player Cloud MQTT, P2P WebRTC & Dedicated WebSocket LAN)
+    let netMode = 'offline'; // 'offline', 'cloud_host', 'cloud_client', 'p2p_host', 'p2p_client', 'ws_host', 'ws_client'
     let myRole = 'host'; // 'host' or 'client'
-    let myPlayerName = 'Player 1';
-    let peerName = 'Partner';
+    let mySlot = 'p1'; // 'p1', 'p2', 'p3', 'p4'
+    let myPlayerName = 'Host (P1)';
     let peerConnected = false;
-    let peerCursor = { x: -100, y: -100, active: false, selectedKey: null };
+    let activeRoomCode = null;
+
+    // 4-Player Slot Registry & Live State
+    const PLAYER_SLOTS = {
+      p1: { name: 'P1 (Host)', color: '#38bdf8', lightColor: '#7dd3fc', connected: true, cash: 800 },
+      p2: { name: 'P2', color: '#ec4899', lightColor: '#f472b6', connected: false, cash: 800 },
+      p3: { name: 'P3', color: '#f59e0b', lightColor: '#fbbf24', connected: false, cash: 800 },
+      p4: { name: 'P4', color: '#10b981', lightColor: '#34d399', connected: false, cash: 800 }
+    };
+
+    // Real-Time Multi-Cursor Map for all connected peers (p2, p3, p4 etc.)
+    const remoteCursors = {
+      p1: { x: -100, y: -100, active: false, selectedKey: null },
+      p2: { x: -100, y: -100, active: false, selectedKey: null },
+      p3: { x: -100, y: -100, active: false, selectedKey: null },
+      p4: { x: -100, y: -100, active: false, selectedKey: null }
+    };
+
     let peerInstance = null;
     let peerConnection = null;
     let wsConnection = null;
-    let activeRoomCode = null;
 
     // --- 6. Controls & Setup ---
     function buildStoreUI() {
@@ -1230,12 +1263,14 @@
       mouse.x = e.clientX - r.left;
       mouse.y = e.clientY - r.top;
 
-      // Broadcast cursor and ghost placement to partner (throttled to 30fps)
+      // Broadcast cursor and ghost placement to all peers (throttled to 30fps)
       const now = performance.now();
       if (netMode !== 'offline' && peerConnected && now - lastCursorSend > 33) {
         lastCursorSend = now;
         sendNetMessage({
           type: 'CURSOR_MOVE',
+          slot: mySlot,
+          name: myPlayerName,
           x: Math.round(mouse.x),
           y: Math.round(mouse.y),
           selectedKey: selectedTowerKey
@@ -1245,7 +1280,7 @@
 
     canvas.addEventListener('mouseleave', () => {
       if (netMode !== 'offline' && peerConnected) {
-        sendNetMessage({ type: 'CURSOR_LEAVE' });
+        sendNetMessage({ type: 'CURSOR_LEAVE', slot: mySlot });
       }
     });
 
@@ -1260,8 +1295,8 @@
           const spec = TOWER_SPECS[selectedTowerKey];
           if (cash >= spec.cost) {
             cash -= spec.cost;
-            const ownerName = netMode !== 'offline' ? (myRole === 'host' ? 'P1 (Host)' : 'P2 (Partner)') : 'Player 1';
-            const newT = createTower(selectedTowerKey, clickX, clickY, ownerName, myRole);
+            const ownerName = netMode !== 'offline' ? (PLAYER_SLOTS[mySlot] ? PLAYER_SLOTS[mySlot].name : myPlayerName) : 'Player 1';
+            const newT = createTower(selectedTowerKey, clickX, clickY, ownerName, mySlot);
             towers.push(newT);
             playSfx('dart');
             createFloatingText(clickX, clickY - 20, `-$${spec.cost}`, '#facc15');
@@ -1269,7 +1304,7 @@
             inspectTower(newT);
             updateUI();
 
-            // Broadcast tower placement to LAN co-op partner
+            // Broadcast tower placement to co-op partners
             if (netMode !== 'offline' && peerConnected) {
               sendNetMessage({
                 type: 'PLACE_TOWER',
@@ -1282,6 +1317,7 @@
                   ownerRole: newT.ownerRole,
                   totalCost: newT.totalCost
                 },
+                senderSlot: mySlot,
                 senderCash: cash
               });
             }
@@ -1358,7 +1394,7 @@
 
     function createTower(typeKey, x, y, owner = 'Player 1', ownerRole = null) {
       const s = TOWER_SPECS[typeKey];
-      const resolvedRole = ownerRole || (netMode !== 'offline' ? myRole : 'host');
+      const resolvedRole = ownerRole || (netMode !== 'offline' ? mySlot : 'p1');
       return {
         id: Math.random().toString(36).substring(2, 9),
         typeKey, owner, ownerRole: resolvedRole, name: s.name, x, y, angle: 0,
@@ -1387,7 +1423,7 @@
 
       const spec = TOWER_SPECS[t.typeKey];
       const isCoop = netMode !== 'offline' && peerConnected;
-      const isMyTower = !isCoop || (t.ownerRole === myRole);
+      const isMyTower = !isCoop || (t.ownerRole === mySlot);
 
       // Update Paths 1, 2, 3
       [1, 2, 3].forEach(p => {
@@ -1404,7 +1440,7 @@
           costEl.textContent = `$${upg.cost}`;
           descEl.textContent = upg.desc;
           if (!isMyTower) {
-            btn.textContent = `Partner's Tower`;
+            btn.textContent = `Teammate's Tower`;
             btn.disabled = true;
           } else {
             btn.textContent = `Buy ($${upg.cost})`;
@@ -1432,8 +1468,8 @@
 
     function buyUpgrade(pathNum, fromNet = false) {
       if (!inspectedTower) return;
-      if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== myRole) {
-        showToast("Cannot upgrade partner's tower!", true);
+      if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== mySlot) {
+        showToast("Cannot upgrade teammate's tower!", true);
         return;
       }
       const spec = TOWER_SPECS[inspectedTower.typeKey];
@@ -1456,6 +1492,7 @@
               type: 'UPGRADE_TOWER',
               towerId: inspectedTower.id,
               pathNum: pathNum,
+              senderSlot: mySlot,
               senderCash: cash
             });
           }
@@ -1465,8 +1502,8 @@
 
     function sellInspectedTower(fromNet = false) {
       if (!inspectedTower) return;
-      if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== myRole) {
-        showToast("Cannot sell partner's tower!", true);
+      if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== mySlot) {
+        showToast("Cannot sell teammate's tower!", true);
         return;
       }
       const tId = inspectedTower.id;
@@ -1481,6 +1518,7 @@
         sendNetMessage({
           type: 'SELL_TOWER',
           towerId: tId,
+          senderSlot: mySlot,
           senderCash: cash
         });
       }
@@ -1488,7 +1526,7 @@
 
     function setTargetPriority(val, fromNet = false) {
       if (inspectedTower) {
-        if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== myRole) {
+        if (!fromNet && netMode !== 'offline' && peerConnected && inspectedTower.ownerRole !== mySlot) {
           return;
         }
         inspectedTower.targetPriority = val;
@@ -1496,7 +1534,8 @@
           sendNetMessage({
             type: 'SET_PRIORITY',
             towerId: inspectedTower.id,
-            priority: val
+            priority: val,
+            senderSlot: mySlot
           });
         }
       }
@@ -2146,12 +2185,13 @@
         ctx.save();
         ctx.translate(t.x, t.y);
 
-        // In Co-op, render a distinct colored base ring indicating who owns the tower (P1 Cyan vs P2 Pink)
+        // In Co-op, render a distinct colored base ring indicating who owns the tower (P1 Cyan, P2 Pink, P3 Amber, P4 Emerald)
         if (netMode !== 'offline' && peerConnected) {
-          const isP1 = t.ownerRole === 'host' || (t.owner && (t.owner.includes('P1') || t.owner.includes('Host')));
+          const role = t.ownerRole || (t.owner && t.owner.includes('P2') ? 'p2' : (t.owner && t.owner.includes('P3') ? 'p3' : (t.owner && t.owner.includes('P4') ? 'p4' : 'p1')));
+          const slotInfo = PLAYER_SLOTS[role] || PLAYER_SLOTS.p1;
           ctx.save();
-          ctx.strokeStyle = isP1 ? 'rgba(56, 189, 248, 0.7)' : 'rgba(236, 72, 153, 0.7)';
-          ctx.lineWidth = 2;
+          ctx.strokeStyle = slotInfo.color;
+          ctx.lineWidth = 2.5;
           ctx.beginPath();
           ctx.arc(0, 0, 20, 0, Math.PI * 2);
           ctx.stroke();
@@ -2996,51 +3036,58 @@
         ctx.fillText(ft.text, ft.x, ft.y);
       }
 
-      // 11. Co-Op Partner Real-Time Cursor & Ghost Tower Preview
-      if (netMode !== 'offline' && peerConnected && peerCursor.active) {
-        ctx.save();
-        // Partner Ghost Tower preview if partner is selecting a tower
-        if (peerCursor.selectedKey && TOWER_SPECS[peerCursor.selectedKey]) {
-          const pSpec = TOWER_SPECS[peerCursor.selectedKey];
-          ctx.fillStyle = 'rgba(236, 72, 153, 0.2)';
-          ctx.strokeStyle = '#ec4899';
-          ctx.lineWidth = 1.5;
+      // 11. Co-Op Multi-Player Real-Time Cursors & Ghost Previews
+      if (netMode !== 'offline' && peerConnected) {
+        for (const [slotKey, cur] of Object.entries(remoteCursors)) {
+          if (slotKey === mySlot || !cur || !cur.active) continue;
+          const slotInfo = PLAYER_SLOTS[slotKey] || { name: slotKey.toUpperCase(), color: '#ec4899', lightColor: '#f472b6' };
+
+          ctx.save();
+          // Ghost Tower preview if remote player is selecting a tower
+          if (cur.selectedKey && TOWER_SPECS[cur.selectedKey]) {
+            const pSpec = TOWER_SPECS[cur.selectedKey];
+            ctx.fillStyle = `${slotInfo.color}33`; // 20% opacity
+            ctx.strokeStyle = slotInfo.color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(cur.x, cur.y, Math.min(pSpec.range, 350), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = pSpec.color;
+            ctx.beginPath();
+            ctx.arc(cur.x, cur.y, 16, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Remote Cursor Pointer
+          ctx.translate(cur.x, cur.y);
+          ctx.fillStyle = slotInfo.color;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(peerCursor.x, peerCursor.y, Math.min(pSpec.range, 350), 0, Math.PI * 2);
+          ctx.moveTo(0, 0);
+          ctx.lineTo(16, 12);
+          ctx.lineTo(9, 14);
+          ctx.lineTo(13, 23);
+          ctx.lineTo(8, 25);
+          ctx.lineTo(5, 16);
+          ctx.lineTo(0, 19);
+          ctx.closePath();
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = pSpec.color;
-          ctx.beginPath();
-          ctx.arc(peerCursor.x, peerCursor.y, 16, 0, Math.PI * 2);
-          ctx.fill();
+          // Remote Player Name Tag
+          const tagLabel = cur.name || slotInfo.name;
+          const tagW = Math.max(60, tagLabel.length * 7.5 + 14);
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+          ctx.fillRect(18, 14, tagW, 18);
+          ctx.fillStyle = slotInfo.lightColor || slotInfo.color;
+          ctx.font = 'bold 10.5px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(tagLabel, 24, 27);
+          ctx.restore();
         }
-
-        // Partner Cursor Pointer
-        ctx.translate(peerCursor.x, peerCursor.y);
-        ctx.fillStyle = '#ec4899';
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(16, 12);
-        ctx.lineTo(9, 14);
-        ctx.lineTo(13, 23);
-        ctx.lineTo(8, 25);
-        ctx.lineTo(5, 16);
-        ctx.lineTo(0, 19);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Partner Name Tag
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-        ctx.fillRect(18, 14, 80, 18);
-        ctx.fillStyle = '#f472b6';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(peerName || 'Partner', 22, 27);
-        ctx.restore();
       }
     }
 
@@ -3050,18 +3097,24 @@
       document.getElementById('lives-val').textContent = lives;
       document.getElementById('round-val').textContent = currentRound;
 
-      const partnerBadge = document.getElementById('partner-cash-badge');
-      const partnerVal = document.getElementById('partner-cash-val');
-      const partnerLabel = document.getElementById('partner-cash-label');
-      if (partnerBadge && partnerVal && partnerLabel) {
+      // Update 4-Player Cash Tray Display
+      ['p1', 'p2', 'p3', 'p4'].forEach(s => {
+        const chip = document.getElementById(`cash-chip-${s}`);
+        const valSpan = document.getElementById(`val-${s}-cash`);
+        if (!chip || !valSpan) return;
+
         if (netMode !== 'offline' && peerConnected) {
-          partnerBadge.style.display = 'inline-block';
-          partnerVal.textContent = partnerCash;
-          partnerLabel.textContent = myRole === 'host' ? 'P2' : 'Host';
+          // Show chips for connected teammates (excluding local player since local cash is shown prominently)
+          if (s !== mySlot && PLAYER_SLOTS[s] && PLAYER_SLOTS[s].connected) {
+            chip.style.display = 'inline-block';
+            valSpan.textContent = PLAYER_SLOTS[s].cash;
+          } else {
+            chip.style.display = 'none';
+          }
         } else {
-          partnerBadge.style.display = 'none';
+          chip.style.display = 'none';
         }
-      }
+      });
 
       for (const [key, spec] of Object.entries(TOWER_SPECS)) {
         const btn = document.getElementById(`btn-tower-${key}`);
@@ -3201,12 +3254,12 @@
       showToast('Debug log cleared.');
     }
     function copyDebugLog() {
-      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.2.1-COOP) ===\n`;
+      let report = `=== BLOONS CO-OP TD DIAGNOSTIC REPORT (v1.3.0-COOP-4P) ===\n`;
       report += `Time: ${new Date().toISOString()}\n`;
       report += `User Agent: ${navigator.userAgent}\n`;
       report += `MQTT Library Available: ${typeof mqtt !== 'undefined'}\n`;
       report += `PeerJS Available: ${typeof Peer !== 'undefined'}\n`;
-      report += `Current NetMode: ${netMode} | Role: ${myRole} | Connected: ${peerConnected}\n`;
+      report += `Current NetMode: ${netMode} | Slot: ${mySlot} | Connected: ${peerConnected}\n`;
       report += `Active Room Code: ${activeRoomCode || 'None'}\n\n`;
       report += `=== EVENT LOGS (${DEBUG_LOGS.length} entries) ===\n`;
       DEBUG_LOGS.forEach(l => {
@@ -3276,26 +3329,44 @@
     function updateNetworkStatusUI() {
       const statusText = document.getElementById('net-status-text');
       const badgeText = document.getElementById('coop-badge-text');
-      const p1Pill = document.getElementById('name-p1');
-      const p2Pill = document.getElementById('name-p2');
-      const p2Dot = document.getElementById('dot-p2-icon');
 
       if (netMode === 'offline') {
         statusText.innerHTML = 'Status: <span style="color:#94a3b8;">Offline (Single Player)</span>';
         badgeText.textContent = 'LAN / Co-Op Lobby';
-        p1Pill.textContent = 'P1 (You)';
-        p2Pill.textContent = 'P2 (Waiting...)';
-        p2Dot.style.background = '#64748b';
-        p2Dot.style.boxShadow = 'none';
+        document.getElementById('name-p1').textContent = 'P1 (You)';
+        ['p2', 'p3', 'p4'].forEach(s => {
+          document.getElementById(`name-${s}`).textContent = s.toUpperCase();
+          const dot = document.getElementById(`dot-${s}-icon`);
+          if (dot) {
+            dot.style.background = '#64748b';
+            dot.style.boxShadow = 'none';
+          }
+        });
       } else {
+        // Count active players
+        const activeCount = Object.values(PLAYER_SLOTS).filter(s => s.connected).length;
         const roleLabel = myRole === 'host' ? 'Host' : 'Client';
-        statusText.innerHTML = `Status: <span style="color:#10b981; font-weight:bold;">${peerConnected ? 'Connected (2/2 Players)' : 'Waiting for partner...'}</span> (${roleLabel} - ${activeRoomCode || 'LAN'})`;
-        badgeText.textContent = peerConnected ? `🌐 Co-Op: ${activeRoomCode || 'CONNECTED'}` : `🌐 Waiting: ${activeRoomCode}`;
-        
-        p1Pill.textContent = myRole === 'host' ? 'P1 (You - Host)' : `P1 (${peerName || 'Host'})`;
-        p2Pill.textContent = myRole === 'client' ? 'P2 (You - Client)' : (peerConnected ? `P2 (${peerName})` : 'P2 (Waiting...)');
-        p2Dot.style.background = peerConnected ? '#ec4899' : '#64748b';
-        p2Dot.style.boxShadow = peerConnected ? '0 0 6px #ec4899' : 'none';
+        statusText.innerHTML = `Status: <span style="color:#10b981; font-weight:bold;">${peerConnected ? `Connected (${activeCount}/4 Players)` : 'Waiting for teammates...'}</span> (${roleLabel} [${mySlot.toUpperCase()}] - ${activeRoomCode || 'LAN'})`;
+        badgeText.textContent = peerConnected ? `🌐 Co-Op: ${activeRoomCode || 'ACTIVE'} (${activeCount}/4)` : `🌐 Waiting: ${activeRoomCode}`;
+
+        // Update each player pill
+        ['p1', 'p2', 'p3', 'p4'].forEach(s => {
+          const nameEl = document.getElementById(`name-${s}`);
+          const dot = document.getElementById(`dot-${s}-icon`);
+          const slot = PLAYER_SLOTS[s];
+          if (!nameEl || !dot || !slot) return;
+
+          const isMe = (s === mySlot);
+          if (slot.connected) {
+            nameEl.textContent = isMe ? `${s.toUpperCase()} (You)` : slot.name;
+            dot.style.background = slot.color;
+            dot.style.boxShadow = `0 0 6px ${slot.color}`;
+          } else {
+            nameEl.textContent = `${s.toUpperCase()} (Open)`;
+            dot.style.background = '#64748b';
+            dot.style.boxShadow = 'none';
+          }
+        });
       }
     }
 
@@ -3323,20 +3394,30 @@
       fleetSyncTimer = setInterval(() => {
         if (netMode === 'offline' || !peerConnected) return;
 
+        // Keep local cash synced into PLAYER_SLOTS
+        if (PLAYER_SLOTS[mySlot]) PLAYER_SLOTS[mySlot].cash = cash;
+
         if (myRole === 'host') {
+          // Host broadcasts authoritative fleet sync + all known player cash balances
+          const cashSummary = {};
+          for (const s of ['p1', 'p2', 'p3', 'p4']) {
+            if (PLAYER_SLOTS[s].connected) cashSummary[s] = PLAYER_SLOTS[s].cash;
+          }
+
           sendNetMessage({
             type: 'SYNC_FLEET',
             lives,
             currentRound,
             isWaveActive,
-            hostCash: cash,
+            cashSummary,
+            slotsState: PLAYER_SLOTS,
             towers: towers.map(t => ({
               id: t.id,
               typeKey: t.typeKey,
               x: t.x,
               y: t.y,
               owner: t.owner,
-              ownerRole: t.ownerRole || 'host',
+              ownerRole: t.ownerRole || 'p1',
               totalCost: t.totalCost,
               p1Tier: t.p1Tier,
               p2Tier: t.p2Tier,
@@ -3346,16 +3427,18 @@
             }))
           });
         } else if (myRole === 'client') {
+          // Client sends heartbeat with their local cash and towers
           sendNetMessage({
             type: 'CLIENT_HEARTBEAT',
+            slot: mySlot,
             clientCash: cash,
-            towers: towers.filter(t => t.ownerRole === 'client' || t.owner === myPlayerName).map(t => ({
+            towers: towers.filter(t => t.ownerRole === mySlot).map(t => ({
               id: t.id,
               typeKey: t.typeKey,
               x: t.x,
               y: t.y,
               owner: t.owner,
-              ownerRole: t.ownerRole || 'client',
+              ownerRole: t.ownerRole,
               totalCost: t.totalCost,
               p1Tier: t.p1Tier,
               p2Tier: t.p2Tier,
@@ -3381,17 +3464,26 @@
       activeRoomCode = desiredId;
       netMode = 'cloud_host';
       myRole = 'host';
+      mySlot = 'p1';
       myPlayerName = 'Host (P1)';
+
+      // Initialize player slots
+      PLAYER_SLOTS.p1.connected = true;
+      PLAYER_SLOTS.p1.name = 'P1 (Host)';
+      PLAYER_SLOTS.p1.cash = cash;
+      PLAYER_SLOTS.p2.connected = false;
+      PLAYER_SLOTS.p3.connected = false;
+      PLAYER_SLOTS.p4.connected = false;
 
       document.getElementById('display-cloud-room-code').textContent = desiredId;
       document.getElementById('cloud-host-code-box').style.display = 'block';
       document.getElementById('btn-host-cloud').disabled = true;
-      document.getElementById('btn-host-cloud').textContent = 'Cloud Hosting Active';
+      document.getElementById('btn-host-cloud').textContent = 'Cloud Hosting Active (4P)';
       updateNetworkStatusUI();
 
       const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
       logNet(`[Cloud] Connecting to encrypted WebSocket relay (${brokerUrl})...`);
-      showToast('Hosting Cloud Session...');
+      showToast('Hosting 4-Player Cloud Session...');
 
       const clientId = 'btd_h_' + Math.random().toString(16).substring(2, 10);
       try {
@@ -3407,17 +3499,16 @@
         return;
       }
 
-      const inTopic = `btdcoop_v1/${activeRoomCode}/to_host`;
-      const outTopic = `btdcoop_v1/${activeRoomCode}/to_client`;
+      const roomTopic = `btdcoop_v1/${activeRoomCode}/room`;
 
       mqttClient.on('connect', () => {
-        logNet(`[Cloud] Connected to secure relay! Subscribing to room channel...`);
-        mqttClient.subscribe(inTopic, { qos: 1 }, (err) => {
+        logNet(`[Cloud] Connected to secure relay! Subscribing to room topic...`);
+        mqttClient.subscribe(roomTopic, { qos: 1 }, (err) => {
           if (err) {
             logNet(`❌ Cloud room subscribe failed: ${err.message}`);
           } else {
-            logNet(`✅ Cloud Room ready! Share code: "${activeRoomCode}"`);
-            showToast(`🚀 Cloud Room hosted! Code: ${activeRoomCode}`);
+            logNet(`✅ 4-Player Cloud Room ready! Share code: "${activeRoomCode}"`);
+            showToast(`🚀 4-Player Room hosted! Code: ${activeRoomCode}`);
             startFleetSyncTimer();
           }
         });
@@ -3426,25 +3517,53 @@
       mqttClient.on('message', (topic, payload) => {
         try {
           const msg = JSON.parse(payload.toString());
-          if (msg.type === 'JOIN_HELLO') {
-            peerConnected = true;
-            peerName = msg.senderName || 'Partner (P2)';
-            updateNetworkStatusUI();
-            logNet(`🎉 Partner joined Cloud Room: ${peerName}!`);
-            showToast(`🎉 Co-Op Connected! Playing with ${peerName}!`);
+          if (msg.senderClientId === clientId) return; // Ignore own messages
 
-            // Send full game state snapshot immediately
+          if (msg.type === 'JOIN_HELLO') {
+            // Find next available slot: p2, p3, p4
+            let assignedSlot = null;
+            for (const s of ['p2', 'p3', 'p4']) {
+              if (!PLAYER_SLOTS[s].connected) {
+                assignedSlot = s;
+                break;
+              }
+            }
+
+            if (!assignedSlot) {
+              // Room is full (4/4)
+              sendNetMessage({
+                type: 'ROOM_FULL',
+                targetClientId: msg.senderClientId
+              });
+              logNet(`⚠️ Rejected player "${msg.senderName}": Room is full (4/4).`);
+              return;
+            }
+
+            PLAYER_SLOTS[assignedSlot].connected = true;
+            PLAYER_SLOTS[assignedSlot].name = msg.senderName || assignedSlot.toUpperCase();
+            PLAYER_SLOTS[assignedSlot].clientId = msg.senderClientId;
+            peerConnected = true;
+            updateNetworkStatusUI();
+
+            logNet(`🎉 Player joined slot [${assignedSlot.toUpperCase()}]: ${PLAYER_SLOTS[assignedSlot].name}!`);
+            showToast(`🎉 ${PLAYER_SLOTS[assignedSlot].name} joined!`);
+
+            // Send welcoming slot assignment & current authoritative snapshot
             sendNetMessage({
-              type: 'STATE_SNAPSHOT',
+              type: 'SLOT_ASSIGNED',
+              targetClientId: msg.senderClientId,
+              assignedSlot: assignedSlot,
+              slotsState: PLAYER_SLOTS,
               cash,
               lives,
               currentRound,
               isWaveActive,
               towers: towers.map(t => ({
                 id: t.id, typeKey: t.typeKey, x: t.x, y: t.y, owner: t.owner,
-                ownerRole: t.ownerRole || 'host',
+                ownerRole: t.ownerRole || 'p1',
                 totalCost: t.totalCost, p1Tier: t.p1Tier, p2Tier: t.p2Tier, p3Tier: t.p3Tier,
-                targetPriority: t.targetPriority
+                targetPriority: t.targetPriority,
+                pops: t.pops
               }))
             });
           } else {
@@ -3482,7 +3601,8 @@
       activeRoomCode = targetCode;
       netMode = 'cloud_client';
       myRole = 'client';
-      myPlayerName = 'Partner (P2)';
+      mySlot = 'p2'; // Default, will be confirmed by host
+      myPlayerName = 'Player ' + Math.floor(Math.random() * 90 + 10);
       updateNetworkStatusUI();
 
       const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
@@ -3503,19 +3623,19 @@
         return;
       }
 
-      const inTopic = `btdcoop_v1/${activeRoomCode}/to_client`;
-      const outTopic = `btdcoop_v1/${activeRoomCode}/to_host`;
+      const roomTopic = `btdcoop_v1/${activeRoomCode}/room`;
 
       mqttClient.on('connect', () => {
-        logNet(`[Cloud] Connected to secure relay! Subscribing to room channel...`);
-        mqttClient.subscribe(inTopic, { qos: 1 }, (err) => {
+        logNet(`[Cloud] Connected to secure relay! Subscribing to room topic...`);
+        mqttClient.subscribe(roomTopic, { qos: 1 }, (err) => {
           if (err) {
             logNet(`❌ Cloud subscribe error: ${err.message}`);
           } else {
-            logNet(`[Cloud] Subscribed. Sending handshake to host...`);
-            mqttClient.publish(outTopic, JSON.stringify({
+            logNet(`[Cloud] Subscribed. Sending join handshake to host...`);
+            mqttClient.publish(roomTopic, JSON.stringify({
               type: 'JOIN_HELLO',
-              senderName: 'Partner (P2)'
+              senderClientId: clientId,
+              senderName: myPlayerName
             }), { qos: 1 });
             startFleetSyncTimer();
           }
@@ -3525,14 +3645,59 @@
       mqttClient.on('message', (topic, payload) => {
         try {
           const msg = JSON.parse(payload.toString());
-          if (msg.type === 'STATE_SNAPSHOT') {
+          if (msg.senderClientId === clientId) return; // Ignore own messages
+
+          if (msg.type === 'SLOT_ASSIGNED' && msg.targetClientId === clientId) {
+            mySlot = msg.assignedSlot;
+            myPlayerName = `${mySlot.toUpperCase()} (You)`;
             peerConnected = true;
-            peerName = 'Host (P1)';
+            if (msg.slotsState) {
+              for (const [s, info] of Object.entries(msg.slotsState)) {
+                if (PLAYER_SLOTS[s]) {
+                  PLAYER_SLOTS[s].connected = info.connected;
+                  PLAYER_SLOTS[s].name = info.name;
+                  PLAYER_SLOTS[s].cash = info.cash !== undefined ? info.cash : PLAYER_SLOTS[s].cash;
+                }
+              }
+            }
             updateNetworkStatusUI();
-            logNet(`🎉 Connected to Host via Cloud Relay!`);
-            showToast(`🎉 Co-Op Connected! Playing with Host (P1)!`);
+            logNet(`🎉 Assigned Slot [${mySlot.toUpperCase()}] by Host! Co-Op Session Active!`);
+            showToast(`🎉 Joined as ${mySlot.toUpperCase()}! Connected to match!`);
+
+            // Apply snapshot from host
+            if (msg.towers) {
+              lives = msg.lives !== undefined ? msg.lives : lives;
+              currentRound = msg.currentRound !== undefined ? msg.currentRound : currentRound;
+              towers = [];
+              for (const st of msg.towers) {
+                const role = st.ownerRole || 'p1';
+                const restored = createTower(st.typeKey, st.x, st.y, st.owner, role);
+                restored.id = st.id;
+                restored.totalCost = st.totalCost;
+                restored.targetPriority = st.targetPriority || 'first';
+                restored.pops = st.pops || 0;
+                const spec = TOWER_SPECS[st.typeKey];
+                for (let p = 1; p <= 3; p++) {
+                  const tierCount = st[`p${p}Tier`] || 0;
+                  for (let idx = 0; idx < tierCount; idx++) {
+                    if (spec.upgrades[`path${p}`][idx]) {
+                      spec.upgrades[`path${p}`][idx].apply(restored);
+                      restored[`p${p}Tier`]++;
+                    }
+                  }
+                }
+                towers.push(restored);
+              }
+              updateUI();
+              updateWavePreview();
+            }
+          } else if (msg.type === 'ROOM_FULL' && msg.targetClientId === clientId) {
+            showToast('Room is full (4/4 players max)!', true);
+            logNet('❌ Could not join: Room is full (4/4 players max).');
+            disconnectCoop(true);
+          } else {
+            handleIncomingNetMessage(msg);
           }
-          handleIncomingNetMessage(msg);
         } catch (e) {
           logNet(`[Cloud] Message parse error: ${e.message}`);
         }
@@ -3554,26 +3719,10 @@
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun.cloudflare.com:3478' },
         { urls: 'stun:openrelay.metered.ca:80' },
-        {
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
       ],
       iceCandidatePoolSize: 10
     };
@@ -3581,25 +3730,16 @@
     // 1. Direct Browser P2P Hosting (PeerJS / WebRTC)
     function startHostP2P() {
       if (typeof Peer === 'undefined') {
-        showToast('PeerJS library not loaded. Check internet connection!', true);
-        logNet('❌ Error: PeerJS library is undefined.');
+        showToast('WebRTC library failed to load. Check internet connection!', true);
         return;
       }
+      disconnectCoop(true);
 
-      if (peerInstance) {
-        try { peerInstance.destroy(); } catch (e) {}
-      }
-
-      logNet('Connecting to WebRTC matchmaking network...');
-      showToast('Creating room...');
-
-      // Clean, easily shareable 5-character alphanumeric room ID
       const desiredId = 'btd-' + Math.random().toString(36).substring(2, 7);
-      
       try {
         peerInstance = new Peer(desiredId, {
-          debug: 2,
-          config: ICE_CONFIG
+          config: ICE_CONFIG,
+          debug: 1
         });
       } catch (err) {
         logNet(`❌ Peer init failed: ${err.message}`);
@@ -3611,7 +3751,9 @@
         activeRoomCode = id;
         netMode = 'p2p_host';
         myRole = 'host';
+        mySlot = 'p1';
         myPlayerName = 'Host (P1)';
+        PLAYER_SLOTS.p1.connected = true;
         document.getElementById('display-room-code').textContent = id;
         document.getElementById('host-code-box').style.display = 'block';
         document.getElementById('btn-host-p2p').disabled = true;
@@ -3628,12 +3770,8 @@
       });
 
       peerInstance.on('error', (err) => {
-        logNet(`❌ WebRTC Peer Error: [${err.type}] ${err.message}`);
-        if (err.type === 'unavailable-id') {
-          startHostP2P();
-        } else {
-          showToast(`Network Notice: ${err.type}`, true);
-        }
+        logNet(`❌ PeerJS Error: [${err.type}] ${err.message}`);
+        showToast(`P2P Error: ${err.type}`, true);
       });
 
       peerInstance.on('disconnected', () => {
@@ -3645,33 +3783,26 @@
     // 2. Direct Browser P2P Joining (PeerJS / WebRTC)
     function joinP2P() {
       if (typeof Peer === 'undefined') {
-        showToast('PeerJS library not loaded. Check internet connection!', true);
-        logNet('❌ Error: PeerJS library is undefined.');
+        showToast('WebRTC library failed to load.', true);
         return;
       }
-
       const codeInput = document.getElementById('input-join-code');
-      const targetCode = codeInput.value.trim().toLowerCase();
+      const targetCode = codeInput.value.trim();
       if (!targetCode) {
-        showToast('Please enter a valid room code!', true);
+        showToast('Please enter a room code!', true);
         return;
       }
+      disconnectCoop(true);
 
-      if (peerInstance) {
-        try { peerInstance.destroy(); } catch (e) {}
-      }
-
-      logNet(`Initializing joiner client...`);
-      showToast(`Connecting to ${targetCode}...`);
-
+      const myJoinId = 'btd-join-' + Math.random().toString(36).substring(2, 6);
       try {
-        peerInstance = new Peer({
-          debug: 2,
-          config: ICE_CONFIG
+        peerInstance = new Peer(myJoinId, {
+          config: ICE_CONFIG,
+          debug: 1
         });
       } catch (err) {
-        logNet(`❌ Peer join init failed: ${err.message}`);
-        showToast('Connection error: ' + err.message, true);
+        logNet(`❌ Peer join init error: ${err.message}`);
+        showToast('Init failed: ' + err.message, true);
         return;
       }
 
@@ -3685,6 +3816,7 @@
         peerConnection = conn;
         netMode = 'p2p_client';
         myRole = 'client';
+        mySlot = 'p2';
         myPlayerName = 'Partner (P2)';
         activeRoomCode = targetCode;
 
@@ -3707,7 +3839,7 @@
           const state = conn.peerConnection.iceConnectionState;
           logNet(`ICE Connection State: ${state}`);
           if (state === 'connected' || state === 'completed') {
-            logNet(`✅ WebRTC connection established (Direct UDP or TURN Relay active)!`);
+            logNet(`✅ WebRTC connection established!`);
           } else if (state === 'failed') {
             logNet(`❌ ICE connection failed. Could not find valid STUN/TURN route.`);
           }
@@ -3738,10 +3870,10 @@
       conn.on('open', () => {
         clearTimeout(connectTimeout);
         peerConnected = true;
-        peerName = myRole === 'host' ? 'Partner (P2)' : 'Host (P1)';
+        PLAYER_SLOTS.p2.connected = true;
         updateNetworkStatusUI();
-        logNet(`🎉 P2P Data Channel connected successfully with ${peerName}!`);
-        showToast(`🎉 Co-Op Connected! Playing with ${peerName}!`);
+        logNet(`🎉 P2P Data Channel connected successfully!`);
+        showToast(`🎉 Co-Op Connected!`);
         startFleetSyncTimer();
 
         // If host, send current state snapshot to client
@@ -3755,7 +3887,7 @@
             isWaveActive,
             towers: towers.map(t => ({
               id: t.id, typeKey: t.typeKey, x: t.x, y: t.y, owner: t.owner,
-              ownerRole: t.ownerRole || 'host',
+              ownerRole: t.ownerRole || 'p1',
               totalCost: t.totalCost, p1Tier: t.p1Tier, p2Tier: t.p2Tier, p3Tier: t.p3Tier,
               targetPriority: t.targetPriority
             }))
@@ -3769,6 +3901,7 @@
 
       conn.on('close', () => {
         peerConnected = false;
+        PLAYER_SLOTS.p2.connected = false;
         logNet(`⚠️ Partner disconnected from session.`);
         showToast(`⚠️ Partner disconnected.`, true);
         updateNetworkStatusUI();
@@ -3808,14 +3941,16 @@
           if (msg.type === 'ROOM_CREATED' || msg.type === 'ROOM_JOINED') {
             netMode = 'ws_host';
             myRole = msg.role;
+            mySlot = msg.role === 'host' ? 'p1' : 'p2';
             peerConnected = (msg.type === 'ROOM_JOINED');
             updateNetworkStatusUI();
             showToast(msg.message);
           } else if (msg.type === 'PEER_CONNECTED') {
             peerConnected = true;
-            peerName = msg.peerName;
+            PLAYER_SLOTS.p2.connected = true;
+            PLAYER_SLOTS.p2.name = msg.peerName;
             updateNetworkStatusUI();
-            showToast(`🎉 ${peerName} joined your LAN session!`);
+            showToast(`🎉 ${msg.peerName} joined your LAN session!`);
             // Send state
             if (myRole === 'host') {
               sendNetMessage({
@@ -3823,7 +3958,7 @@
                 cash, lives, currentRound, isWaveActive,
                 towers: towers.map(t => ({
                   id: t.id, typeKey: t.typeKey, x: t.x, y: t.y, owner: t.owner,
-                  ownerRole: t.ownerRole || 'host',
+                  ownerRole: t.ownerRole || 'p1',
                   totalCost: t.totalCost, p1Tier: t.p1Tier, p2Tier: t.p2Tier, p3Tier: t.p3Tier,
                   targetPriority: t.targetPriority
                 }))
@@ -3840,14 +3975,12 @@
       };
     }
 
-    // Unified message transmitter
+    // Unified message transmitter (Publishes to room broadcast topic in Cloud mode)
     function sendNetMessage(msg) {
       if (mqttClient && mqttClient.connected && activeRoomCode) {
-        const outTopic = myRole === 'host'
-          ? `btdcoop_v1/${activeRoomCode}/to_client`
-          : `btdcoop_v1/${activeRoomCode}/to_host`;
+        const roomTopic = `btdcoop_v1/${activeRoomCode}/room`;
         const qos = (msg.type === 'CURSOR_MOVE') ? 0 : 1;
-        mqttClient.publish(outTopic, JSON.stringify(msg), { qos });
+        mqttClient.publish(roomTopic, JSON.stringify(msg), { qos });
       } else if (peerConnection && peerConnection.open) {
         peerConnection.send(msg);
       } else if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
@@ -3866,28 +3999,34 @@
 
       switch (msg.type) {
         case 'CURSOR_MOVE':
-          peerCursor.x = msg.x;
-          peerCursor.y = msg.y;
-          peerCursor.selectedKey = msg.selectedKey;
-          peerCursor.active = true;
+          const cSlot = msg.slot || 'p2';
+          if (!remoteCursors[cSlot]) remoteCursors[cSlot] = { x: -100, y: -100, active: false, selectedKey: null };
+          remoteCursors[cSlot].x = msg.x;
+          remoteCursors[cSlot].y = msg.y;
+          remoteCursors[cSlot].selectedKey = msg.selectedKey;
+          remoteCursors[cSlot].name = msg.name || (PLAYER_SLOTS[cSlot] ? PLAYER_SLOTS[cSlot].name : cSlot.toUpperCase());
+          remoteCursors[cSlot].active = true;
           break;
 
         case 'CURSOR_LEAVE':
-          peerCursor.active = false;
+          const lSlot = msg.slot || 'p2';
+          if (remoteCursors[lSlot]) remoteCursors[lSlot].active = false;
           break;
 
         case 'PLACE_TOWER':
           const tData = msg.towerData;
           if (!towers.some(t => t.id === tData.id)) {
-            const partnerRole = tData.ownerRole || (myRole === 'host' ? 'client' : 'host');
-            const placedTower = createTower(tData.typeKey, tData.x, tData.y, tData.owner || 'Partner', partnerRole);
+            const placedRole = tData.ownerRole || msg.senderSlot || 'p2';
+            const placedTower = createTower(tData.typeKey, tData.x, tData.y, tData.owner || (PLAYER_SLOTS[placedRole] ? PLAYER_SLOTS[placedRole].name : 'Partner'), placedRole);
             placedTower.id = tData.id;
             placedTower.totalCost = tData.totalCost || placedTower.totalCost;
             towers.push(placedTower);
             playSfx('dart');
-            createFloatingText(tData.x, tData.y - 20, `${tData.owner} placed ${placedTower.name}!`, '#ec4899');
+            createFloatingText(tData.x, tData.y - 20, `${tData.owner} placed ${placedTower.name}!`, PLAYER_SLOTS[placedRole] ? PLAYER_SLOTS[placedRole].color : '#ec4899');
           }
-          if (msg.senderCash !== undefined) partnerCash = msg.senderCash;
+          if (msg.senderSlot && msg.senderCash !== undefined && PLAYER_SLOTS[msg.senderSlot]) {
+            PLAYER_SLOTS[msg.senderSlot].cash = msg.senderCash;
+          }
           updateUI();
           break;
 
@@ -3897,7 +4036,9 @@
             inspectedTower = tToUpgrade;
             buyUpgrade(msg.pathNum, true);
           }
-          if (msg.senderCash !== undefined) partnerCash = msg.senderCash;
+          if (msg.senderSlot && msg.senderCash !== undefined && PLAYER_SLOTS[msg.senderSlot]) {
+            PLAYER_SLOTS[msg.senderSlot].cash = msg.senderCash;
+          }
           updateUI();
           break;
 
@@ -3907,7 +4048,9 @@
             inspectedTower = tToSell;
             sellInspectedTower(true);
           }
-          if (msg.senderCash !== undefined) partnerCash = msg.senderCash;
+          if (msg.senderSlot && msg.senderCash !== undefined && PLAYER_SLOTS[msg.senderSlot]) {
+            PLAYER_SLOTS[msg.senderSlot].cash = msg.senderCash;
+          }
           updateUI();
           break;
 
@@ -3923,17 +4066,17 @@
 
         case 'START_WAVE':
           triggerNextWave(true);
-          createFloatingText(canvas.width / 2, 80, `Partner started Round ${currentRound}!`, '#38bdf8', 15);
+          createFloatingText(canvas.width / 2, 80, `Round ${currentRound} Started!`, '#38bdf8', 15);
           break;
 
         case 'STATE_SNAPSHOT':
-          if (msg.cash !== undefined) partnerCash = msg.cash;
-          lives = msg.lives;
-          currentRound = msg.currentRound;
+          lives = msg.lives !== undefined ? msg.lives : lives;
+          currentRound = msg.currentRound !== undefined ? msg.currentRound : currentRound;
+          if (msg.cash !== undefined && PLAYER_SLOTS.p1) PLAYER_SLOTS.p1.cash = msg.cash;
           // Synchronize full tower fleet
           towers = [];
           for (const st of msg.towers) {
-            const role = st.ownerRole || ((st.owner && (st.owner.includes('P1') || st.owner.includes('Host'))) ? 'host' : 'client');
+            const role = st.ownerRole || 'p1';
             const restored = createTower(st.typeKey, st.x, st.y, st.owner, role);
             restored.id = st.id;
             restored.totalCost = st.totalCost;
@@ -3960,12 +4103,32 @@
         case 'SYNC_FLEET':
           lives = msg.lives !== undefined ? msg.lives : lives;
           currentRound = msg.currentRound !== undefined ? Math.max(currentRound, msg.currentRound) : currentRound;
-          if (msg.hostCash !== undefined) partnerCash = msg.hostCash;
+
+          // Update multi-player cash balances and slots state
+          if (msg.cashSummary) {
+            for (const [s, cVal] of Object.entries(msg.cashSummary)) {
+              if (s !== mySlot && PLAYER_SLOTS[s]) {
+                PLAYER_SLOTS[s].cash = cVal;
+                PLAYER_SLOTS[s].connected = true;
+              }
+            }
+          }
+          if (msg.slotsState) {
+            for (const [s, info] of Object.entries(msg.slotsState)) {
+              if (PLAYER_SLOTS[s]) {
+                PLAYER_SLOTS[s].connected = info.connected;
+                PLAYER_SLOTS[s].name = info.name;
+              }
+            }
+            peerConnected = Object.values(PLAYER_SLOTS).some((s, idx) => idx > 0 && s.connected);
+            updateNetworkStatusUI();
+          }
+
           if (msg.towers) {
             for (const st of msg.towers) {
               let existing = towers.find(t => t.id === st.id);
               if (!existing) {
-                const role = st.ownerRole || ((st.owner && (st.owner.includes('P1') || st.owner.includes('Host'))) ? 'host' : 'client');
+                const role = st.ownerRole || 'p1';
                 existing = createTower(st.typeKey, st.x, st.y, st.owner, role);
                 existing.id = st.id;
                 existing.totalCost = st.totalCost;
@@ -4001,17 +4164,23 @@
               }
             }
             const hostIds = new Set(msg.towers.map(t => t.id));
-            towers = towers.filter(t => hostIds.has(t.id) || t.ownerRole === 'client' || t.owner === myPlayerName || t.owner.includes('P2'));
+            towers = towers.filter(t => hostIds.has(t.id) || t.ownerRole === mySlot);
           }
           updateUI();
           break;
 
         case 'CLIENT_HEARTBEAT':
-          if (msg.clientCash !== undefined) partnerCash = msg.clientCash;
+          const hSlot = msg.slot || 'p2';
+          if (PLAYER_SLOTS[hSlot]) {
+            PLAYER_SLOTS[hSlot].cash = msg.clientCash !== undefined ? msg.clientCash : PLAYER_SLOTS[hSlot].cash;
+            PLAYER_SLOTS[hSlot].connected = true;
+          }
+          peerConnected = true;
+
           if (msg.towers) {
             for (const st of msg.towers) {
               if (!towers.some(t => t.id === st.id)) {
-                const role = st.ownerRole || 'client';
+                const role = st.ownerRole || hSlot;
                 const existing = createTower(st.typeKey, st.x, st.y, st.owner, role);
                 existing.id = st.id;
                 existing.totalCost = st.totalCost;
@@ -4028,11 +4197,12 @@
                   }
                 }
                 towers.push(existing);
-                logNet(`🔄 Host auto-synced partner tower: ${existing.name}`);
+                logNet(`🔄 Host auto-synced [${hSlot.toUpperCase()}] tower: ${existing.name}`);
               }
             }
           }
           updateUI();
+          updateNetworkStatusUI();
           break;
       }
     }
@@ -4061,6 +4231,18 @@
       netMode = 'offline';
       peerConnected = false;
       activeRoomCode = null;
+      mySlot = 'p1';
+      myPlayerName = 'Player 1';
+
+      // Reset slots and remote cursors
+      PLAYER_SLOTS.p1.connected = true;
+      PLAYER_SLOTS.p1.name = 'P1 (You)';
+      PLAYER_SLOTS.p2.connected = false;
+      PLAYER_SLOTS.p3.connected = false;
+      PLAYER_SLOTS.p4.connected = false;
+      for (const s of ['p1', 'p2', 'p3', 'p4']) {
+        if (remoteCursors[s]) remoteCursors[s].active = false;
+      }
 
       const btnHostP2p = document.getElementById('btn-host-p2p');
       if (btnHostP2p) {
@@ -4073,12 +4255,13 @@
       const btnHostCloud = document.getElementById('btn-host-cloud');
       if (btnHostCloud) {
         btnHostCloud.disabled = false;
-        btnHostCloud.textContent = 'Host Cloud Co-Op';
+        btnHostCloud.textContent = 'Host 4-Player Co-Op';
       }
       const cloudCodeBox = document.getElementById('cloud-host-code-box');
       if (cloudCodeBox) cloudCodeBox.style.display = 'none';
 
       updateNetworkStatusUI();
+      updateUI();
       if (!silent) showToast('Switched to Single Player Offline.');
     }
 
